@@ -95,6 +95,21 @@
               <div v-if="task.dueDate" class="task-due">
                 <el-icon><Calendar /></el-icon> {{ task.dueDate }}
               </div>
+              <!-- 开发/负责人可改状态、登记工时 -->
+              <div v-if="canOperateTask(task)" class="task-actions">
+                <el-dropdown @click.stop @command="(cmd: string) => cmd.startsWith('status:') ? changeStatus(task, cmd.replace('status:', '')) : openWorklog(task)" size="small">
+                  <el-button size="small" link type="primary">操作 <el-icon><ArrowDown /></el-icon></el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="status:TODO">改为 待处理</el-dropdown-item>
+                      <el-dropdown-item command="status:IN_PROGRESS">改为 进行中</el-dropdown-item>
+                      <el-dropdown-item command="status:PENDING_REVIEW">改为 待验收</el-dropdown-item>
+                      <el-dropdown-item command="status:DONE">改为 已完成</el-dropdown-item>
+                      <el-dropdown-item divided command="worklog">登记工时</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </el-card>
           </div>
         </div>
@@ -146,23 +161,47 @@
           </template>
         </el-table-column>
         <el-table-column prop="dueDate" label="截止日期" width="120" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-dropdown @command="(cmd: string) => changeStatus(row, cmd)" size="small">
-              <el-button size="small">状态 <el-icon><ArrowDown /></el-icon></el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="TODO">待处理</el-dropdown-item>
-                  <el-dropdown-item command="IN_PROGRESS">进行中</el-dropdown-item>
-                  <el-dropdown-item command="PENDING_REVIEW">待验收</el-dropdown-item>
-                  <el-dropdown-item command="DONE">已完成</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <template v-if="canOperateTask(row)">
+              <el-dropdown @command="(cmd: string) => changeStatus(row, cmd)" size="small" style="margin-right: 8px">
+                <el-button size="small">状态 <el-icon><ArrowDown /></el-icon></el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="TODO">待处理</el-dropdown-item>
+                    <el-dropdown-item command="IN_PROGRESS">进行中</el-dropdown-item>
+                    <el-dropdown-item command="PENDING_REVIEW">待验收</el-dropdown-item>
+                    <el-dropdown-item command="DONE">已完成</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button size="small" @click="openWorklog(row)">登记工时</el-button>
+            </template>
+            <span v-else class="text-muted">—</span>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 登记工时 -->
+    <el-dialog v-model="showWorklog" title="登记工时" width="400px">
+      <el-form :model="worklogForm" label-width="80px">
+        <el-form-item label="任务">
+          <span>{{ worklogTask?.title }}</span>
+        </el-form-item>
+        <el-form-item label="已用工时" required>
+          <el-input-number v-model="worklogForm.spentHours" :min="0.5" :step="0.5" :precision="1" />
+          <span style="margin-left: 8px">小时</span>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="worklogForm.remark" type="textarea" rows="2" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showWorklog = false">取消</el-button>
+        <el-button type="primary" :loading="worklogSubmitting" @click="submitWorklog">确定</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="showCreate" title="新建任务" width="560px">
       <el-form ref="formRef" :model="form" label-width="100px">
@@ -243,8 +282,21 @@ const isManager = computed(() => {
   return roles.includes('SUPER_ADMIN') || roles.includes('PROJECT_ADMIN')
 })
 
+/** 当前用户是否可操作该任务（改状态、登记工时）：管理者 或 任务负责人 */
+function canOperateTask(task: { assigneeId?: number | null }) {
+  if (isManager.value) return true
+  const uid = authStore.user?.userId
+  return uid != null && task.assigneeId != null && task.assigneeId === uid
+}
+
 // 非管理者默认只看自己的任务，且不可切换
 const onlyMine = ref(!isManager.value)
+
+// 登记工时
+const showWorklog = ref(false)
+const worklogSubmitting = ref(false)
+const worklogTask = ref<any>(null)
+const worklogForm = reactive({ spentHours: 0.5, remark: '' })
 
 const showCreate = ref(false)
 const creating = ref(false)
@@ -346,9 +398,33 @@ async function create() {
 }
 
 async function changeStatus(row: any, status: string) {
-  await taskApi.updateStatus(row.id, status)
-  ElMessage.success('状态已更新')
-  load()
+  try {
+    await taskApi.updateStatus(row.id, status)
+    ElMessage.success('状态已更新')
+    load()
+  } catch {
+    load()
+  }
+}
+
+function openWorklog(task: any) {
+  worklogTask.value = task
+  worklogForm.spentHours = 0.5
+  worklogForm.remark = ''
+  showWorklog.value = true
+}
+
+async function submitWorklog() {
+  if (!worklogTask.value) return
+  worklogSubmitting.value = true
+  try {
+    await taskApi.logWork(worklogTask.value.id, worklogForm.spentHours, worklogForm.remark || undefined)
+    ElMessage.success('工时已登记')
+    showWorklog.value = false
+    load()
+  } finally {
+    worklogSubmitting.value = false
+  }
 }
 
 onMounted(() => {
@@ -376,4 +452,5 @@ onMounted(() => {
 .assignee { font-size: 12px; color: #999; }
 .hours { font-size: 12px; color: #888; }
 .text-muted { color: #ccc; }
+.task-actions { margin-top: 8px; padding-top: 6px; border-top: 1px solid #eee; }
 </style>
