@@ -65,4 +65,5 @@ logging:
 
 prm:
   upload:
-    path: ${PRM_UPLOAD_PATH:./uploads}
+    # 建议使用绝对路径或 ${user.home}/prm-uploads，避免 Tomcat 工作目录下相对路径导致找不到路径
+    path: ${PRM_UPLOAD_PATH:${user.home}/prm-uploads}

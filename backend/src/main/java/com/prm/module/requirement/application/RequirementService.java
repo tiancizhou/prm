@@ -8,6 +8,7 @@ import com.prm.common.util.SecurityUtil;
 import com.prm.module.requirement.domain.RequirementStateMachine;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
+import com.prm.module.requirement.dto.UpdateRequirementRequest;
 import com.prm.module.requirement.entity.Requirement;
 import com.prm.module.requirement.entity.RequirementReview;
 import com.prm.module.requirement.mapper.RequirementMapper;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,7 +35,9 @@ public class RequirementService {
     private final RequirementStateMachine stateMachine;
     private final SysUserMapper userMapper;
 
-    public IPage<RequirementDTO> page(int pageNum, int pageSize, Long projectId, String status, String keyword) {
+    public IPage<RequirementDTO> page(int pageNum, int pageSize, Long projectId, String status, String keyword,
+                                       Long assigneeId, Long sprintId, Boolean unscheduled,
+                                       LocalDate dueDateFrom, LocalDate dueDateTo) {
         Page<Requirement> pageReq = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Requirement> wrapper = new LambdaQueryWrapper<Requirement>()
                 .eq(Requirement::getDeleted, 0)
@@ -41,6 +45,11 @@ public class RequirementService {
         if (projectId != null) wrapper.eq(Requirement::getProjectId, projectId);
         if (StringUtils.hasText(status)) wrapper.eq(Requirement::getStatus, status);
         if (StringUtils.hasText(keyword)) wrapper.like(Requirement::getTitle, keyword);
+        if (assigneeId != null) wrapper.eq(Requirement::getAssigneeId, assigneeId);
+        if (Boolean.TRUE.equals(unscheduled)) wrapper.and(w -> w.isNull(Requirement::getSprintId));
+        else if (sprintId != null) wrapper.eq(Requirement::getSprintId, sprintId);
+        if (dueDateFrom != null) wrapper.ge(Requirement::getDueDate, dueDateFrom);
+        if (dueDateTo != null)   wrapper.le(Requirement::getDueDate, dueDateTo);
         // 非管理者只能看分配给自己的需求
         if (!SecurityUtil.isManager()) {
             wrapper.eq(Requirement::getAssigneeId, SecurityUtil.getCurrentUserId());
@@ -64,6 +73,8 @@ public class RequirementService {
         r.setAssigneeId(request.getAssigneeId());
         r.setEstimatedHours(request.getEstimatedHours() != null ? request.getEstimatedHours() : BigDecimal.ZERO);
         r.setAcceptanceCriteria(request.getAcceptanceCriteria());
+        r.setStartDate(request.getStartDate());
+        r.setDueDate(request.getDueDate());
         r.setDeleted(0);
         r.setCreatedBy(currentUserId);
         r.setUpdatedBy(currentUserId);
@@ -74,14 +85,50 @@ public class RequirementService {
     public RequirementDTO getById(Long id) {
         Requirement r = requirementMapper.selectById(id);
         if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
+        // 非管理者只能查看分配给自己的需求
+        if (!SecurityUtil.isManager()) {
+            if (r.getAssigneeId() == null || !r.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
+                throw BizException.forbidden("无权查看该需求");
+            }
+        }
+        return toDTO(r);
+    }
+
+    @Transactional
+    public RequirementDTO update(Long id, UpdateRequirementRequest request) {
+        Requirement r = requirementMapper.selectById(id);
+        if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
+        // 管理员可编辑任意需求；负责人只能编辑分配给自己的需求
+        if (!SecurityUtil.isManager()) {
+            if (r.getAssigneeId() == null || !r.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
+                throw BizException.forbidden("只能编辑分配给自己的需求");
+            }
+        }
+        r.setTitle(request.getTitle());
+        r.setDescription(request.getDescription());
+        r.setSource(request.getSource());
+        r.setPriority(request.getPriority() != null ? request.getPriority() : "MEDIUM");
+        r.setAssigneeId(request.getAssigneeId());
+        r.setSprintId(request.getSprintId());
+        r.setEstimatedHours(request.getEstimatedHours() != null ? request.getEstimatedHours() : BigDecimal.ZERO);
+        r.setAcceptanceCriteria(request.getAcceptanceCriteria());
+        r.setStartDate(request.getStartDate());
+        r.setDueDate(request.getDueDate());
+        r.setUpdatedBy(SecurityUtil.getCurrentUserId());
+        requirementMapper.updateById(r);
         return toDTO(r);
     }
 
     @Transactional
     public RequirementDTO updateStatus(Long id, String newStatus) {
-        if (!SecurityUtil.isManager()) throw BizException.forbidden("只有项目经理或超级管理员才能变更需求状态");
         Requirement r = requirementMapper.selectById(id);
         if (r == null) throw BizException.notFound("需求");
+        // 管理员可变更任意需求状态；负责人只能变更分配给自己的需求状态
+        if (!SecurityUtil.isManager()) {
+            if (r.getAssigneeId() == null || !r.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
+                throw BizException.forbidden("只能变更分配给自己的需求状态");
+            }
+        }
         stateMachine.transit(r.getStatus(), newStatus);
         r.setStatus(newStatus);
         r.setUpdatedBy(SecurityUtil.getCurrentUserId());
@@ -117,7 +164,10 @@ public class RequirementService {
         dto.setAssigneeId(r.getAssigneeId());
         dto.setEstimatedHours(r.getEstimatedHours());
         dto.setAcceptanceCriteria(r.getAcceptanceCriteria());
+        dto.setStartDate(r.getStartDate());
+        dto.setDueDate(r.getDueDate());
         dto.setCreatedAt(r.getCreatedAt());
+        dto.setUpdatedAt(r.getUpdatedAt());
         if (r.getAssigneeId() != null) {
             SysUser assignee = userMapper.selectById(r.getAssigneeId());
             if (assignee != null) dto.setAssigneeName(assignee.getNickname());

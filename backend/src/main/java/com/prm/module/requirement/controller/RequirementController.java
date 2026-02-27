@@ -5,11 +5,15 @@ import com.prm.common.result.R;
 import com.prm.module.requirement.application.RequirementService;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
+import com.prm.module.requirement.dto.UpdateRequirementRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @Tag(name = "需求管理")
 @RestController
@@ -26,8 +30,15 @@ public class RequirementController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String keyword) {
-        return R.ok(PageResult.of(requirementService.page(page, size, projectId, status, keyword)));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long assigneeId,
+            @RequestParam(required = false) Long sprintId,
+            @RequestParam(required = false) Boolean unscheduled,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateTo) {
+        return R.ok(PageResult.of(requirementService.page(
+                page, size, projectId, status, keyword,
+                assigneeId, sprintId, unscheduled, dueDateFrom, dueDateTo)));
     }
 
     @Operation(summary = "创建需求")
@@ -40,6 +51,12 @@ public class RequirementController {
     @GetMapping("/{id}")
     public R<RequirementDTO> getById(@PathVariable Long id) {
         return R.ok(requirementService.getById(id));
+    }
+
+    @Operation(summary = "更新需求")
+    @PutMapping("/{id}")
+    public R<RequirementDTO> update(@PathVariable Long id, @Valid @RequestBody UpdateRequirementRequest request) {
+        return R.ok(requirementService.update(id, request));
     }
 
     @Operation(summary = "需求状态流转")

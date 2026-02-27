@@ -3,6 +3,7 @@ package com.prm.module.requirement.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -20,5 +21,8 @@ public class RequirementDTO {
     private String assigneeName;
     private BigDecimal estimatedHours;
     private String acceptanceCriteria;
+    private LocalDate startDate;
+    private LocalDate dueDate;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

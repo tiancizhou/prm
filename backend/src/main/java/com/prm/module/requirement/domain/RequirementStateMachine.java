@@ -7,28 +7,29 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 需求状态机
- * 草稿 -> 评审中 -> 已立项 -> 开发中 -> 已完成 -> 已关闭
+ * 需求状态机（小团队/轻流程：三态）
+ * 待办 -> 进行中 -> 已完成；已完成可重新打开为进行中
  */
 @Component
 public class RequirementStateMachine {
 
     private static final Map<String, Set<String>> TRANSITIONS = Map.of(
-            "DRAFT",       Set.of("REVIEWING"),
-            "REVIEWING",   Set.of("DRAFT", "APPROVED"),
+            "DRAFT",       Set.of("IN_PROGRESS"),   // 待办 -> 开始
+            "IN_PROGRESS", Set.of("DONE"),          // 进行中 -> 完成
+            "DONE",        Set.of("IN_PROGRESS"),   // 已完成 -> 重新打开
+            "REVIEWING",   Set.of("IN_PROGRESS"),   // 兼容旧状态
             "APPROVED",    Set.of("IN_PROGRESS"),
-            "IN_PROGRESS", Set.of("DONE"),
-            "DONE",        Set.of("CLOSED", "IN_PROGRESS"),
-            "CLOSED",      Set.of("DRAFT")
+            "CLOSED",     Set.of("IN_PROGRESS")
     );
 
+    /** 三态展示；兼容迁移前的旧状态展示 */
     public static final Map<String, String> STATUS_LABELS = Map.of(
-            "DRAFT",       "草稿",
-            "REVIEWING",   "评审中",
-            "APPROVED",    "已立项",
-            "IN_PROGRESS", "开发中",
+            "DRAFT",       "待办",
+            "IN_PROGRESS", "进行中",
             "DONE",        "已完成",
-            "CLOSED",      "已关闭"
+            "REVIEWING",   "待办",
+            "APPROVED",    "待办",
+            "CLOSED",      "已完成"
     );
 
     public boolean canTransit(String from, String to) {
