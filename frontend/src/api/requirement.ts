@@ -20,7 +20,7 @@ export const requirementApi = {
     http.get(`/requirements/${requirementId}/attachments`),
   deleteAttachment: (requirementId: number, attachmentId: number) =>
     http.delete(`/requirements/${requirementId}/attachments/${attachmentId}`),
-  /** 下载附件（触发浏览器下载） */
+  /** Download attachment and trigger browser save dialog. */
   downloadAttachment: async (requirementId: number, attachmentId: number, filename: string) => {
     const res = await http.get(
       `/requirements/${requirementId}/attachments/${attachmentId}/download`,
@@ -34,3 +34,4 @@ export const requirementApi = {
     URL.revokeObjectURL(url)
   }
 }
+

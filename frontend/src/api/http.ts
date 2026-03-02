@@ -1,14 +1,21 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
+import { HTTP_I18N } from '@/constants/http'
+import { resolveThemeLocale } from '@/constants/theme'
 
 const http = axios.create({
   baseURL: '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json; charset=UTF-8',
-    'Accept': 'application/json; charset=UTF-8'
+    Accept: 'application/json; charset=UTF-8'
   }
 })
+
+function getHttpText() {
+  const locale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
+  return HTTP_I18N[locale]
+}
 
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken')
@@ -23,7 +30,7 @@ http.interceptors.response.use(
     if (response.config.responseType === 'blob') return response
     const data = response.data
     if (data.code !== 200) {
-      ElMessage.error(data.msg || '请求失败')
+      ElMessage.error(data.msg || getHttpText().requestFailed)
       return Promise.reject(new Error(data.msg))
     }
     return data
@@ -33,7 +40,7 @@ http.interceptors.response.use(
       localStorage.removeItem('accessToken')
       window.location.href = '/login'
     } else {
-      ElMessage.error(error.response?.data?.msg || '网络错误')
+      ElMessage.error(error.response?.data?.msg || getHttpText().networkError)
     }
     return Promise.reject(error)
   }
@@ -49,3 +56,4 @@ export async function buildRequestConfig(url: string): Promise<AxiosRequestConfi
 }
 
 export default http
+
