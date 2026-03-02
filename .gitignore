@@ -13,6 +13,7 @@ backend/startup*.log
 # Node
 frontend/node_modules/
 frontend/dist/
+.m2/
 
 # IDE
 .idea/
