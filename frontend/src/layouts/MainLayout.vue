@@ -1,102 +1,133 @@
 <template>
-  <el-container class="layout-container">
-    <!-- 侧边栏 -->
-    <el-aside :width="collapsed ? '64px' : '220px'" class="sidebar">
-      <div class="logo">
-        <el-icon size="24" color="#fff"><Management /></el-icon>
-        <span v-if="!collapsed" class="logo-text">PRM</span>
+  <a class="skip-link" href="#main-content">{{ layoutText.skipToMain }}</a>
+
+  <el-container class="layout-shell">
+    <el-aside :width="collapsed ? '84px' : '248px'" class="layout-sidebar">
+      <div class="brand">
+        <span class="brand-mark">{{ BRAND_SHORT_NAME }}</span>
+        <div v-if="!collapsed" class="brand-text">
+          <strong>{{ BRAND_FULL_NAME }}</strong>
+          <small>{{ BRAND_SUBTITLE }}</small>
+        </div>
       </div>
 
       <el-menu
         :default-active="activeMenu"
         :collapse="collapsed"
-        background-color="#001529"
-        text-color="#a6adb4"
-        active-text-color="#fff"
+        class="sidebar-menu"
         router
       >
         <el-menu-item index="/dashboard">
           <el-icon><DataAnalysis /></el-icon>
-          <template #title>工作台</template>
+          <template #title>{{ layoutText.routeLabels.Dashboard }}</template>
         </el-menu-item>
 
         <el-menu-item index="/projects">
           <el-icon><Folder /></el-icon>
-          <template #title>项目列表</template>
+          <template #title>{{ layoutText.routeLabels.Projects }}</template>
         </el-menu-item>
 
         <template v-if="currentProject">
-          <el-divider style="margin: 8px 0; border-color: #1f3a5f" />
-          <div v-if="!collapsed" class="project-label">{{ currentProject.name }}</div>
-
+          <div v-if="!collapsed" class="menu-section">{{ layoutText.currentProject }}</div>
           <el-menu-item :index="`/projects/${currentProject.id}/overview`">
             <el-icon><House /></el-icon>
-            <template #title>项目概览</template>
+            <template #title>{{ layoutText.routeLabels.ProjectOverview }}</template>
           </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/requirements`">
             <el-icon><Document /></el-icon>
-            <template #title>需求管理</template>
+            <template #title>{{ layoutText.routeLabels.Requirements }}</template>
           </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/tasks`">
             <el-icon><List /></el-icon>
-            <template #title>任务管理</template>
+            <template #title>{{ layoutText.routeLabels.Tasks }}</template>
           </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/bugs`">
             <el-icon><Warning /></el-icon>
-            <template #title>Bug 管理</template>
+            <template #title>{{ layoutText.routeLabels.Bugs }}</template>
           </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/sprints`">
             <el-icon><Calendar /></el-icon>
-            <template #title>迭代管理</template>
+            <template #title>{{ layoutText.routeLabels.Sprints }}</template>
           </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/members`">
             <el-icon><User /></el-icon>
-            <template #title>项目成员</template>
+            <template #title>{{ layoutText.routeLabels.ProjectMembers }}</template>
           </el-menu-item>
         </template>
 
-        <el-divider v-if="isSuperAdmin" style="margin: 8px 0; border-color: #1f3a5f" />
-        <el-menu-item v-if="isSuperAdmin" index="/system/users">
-          <el-icon><Setting /></el-icon>
-          <template #title>用户管理</template>
-        </el-menu-item>
+        <template v-if="isSuperAdmin">
+          <div v-if="!collapsed" class="menu-section">{{ layoutText.systemManagement }}</div>
+          <el-menu-item index="/system/users">
+            <el-icon><Setting /></el-icon>
+            <template #title>{{ layoutText.routeLabels.Users }}</template>
+          </el-menu-item>
+        </template>
       </el-menu>
 
-      <div class="collapse-btn" @click="collapsed = !collapsed">
+      <button
+        class="collapse-btn"
+        type="button"
+        :aria-label="collapsed ? layoutText.sidebarExpandAria : layoutText.sidebarCollapseAria"
+        @click="toggleSidebar"
+      >
         <el-icon>
-          <ArrowLeft v-if="!collapsed" />
-          <ArrowRight v-else />
+          <ArrowRight v-if="collapsed" />
+          <ArrowLeft v-else />
         </el-icon>
-      </div>
+      </button>
     </el-aside>
 
-    <!-- 主内容区 -->
-    <el-container>
-      <!-- 顶部导航 -->
-      <el-header class="header">
+    <el-container class="layout-main">
+      <el-header class="layout-header">
         <div class="header-left">
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/dashboard' }">{{ layoutText.home }}</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="currentRouteLabel">{{ currentRouteLabel }}</el-breadcrumb-item>
           </el-breadcrumb>
+
+          <div v-if="currentProject" class="project-pill">
+            <span class="project-pill-label">{{ layoutText.currentProject }}</span>
+            <strong class="project-pill-name">{{ currentProject.name }}</strong>
+          </div>
         </div>
+
         <div class="header-right">
-          <el-dropdown @command="handleCommand">
-            <div class="user-info">
-              <el-avatar :size="32" icon="UserFilled" />
-              <span class="username">{{ authStore.user?.nickname || authStore.user?.username }}</span>
+          <el-dropdown @command="handleThemeCommand">
+            <button class="theme-trigger" type="button" :aria-label="themeText.switchAria">
+              <el-icon><component :is="themeIconName" /></el-icon>
+              <span class="theme-label">{{ themeLabel }}</span>
               <el-icon><ArrowDown /></el-icon>
-            </div>
+            </button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                <el-dropdown-item
+                  v-for="option in themeOptions"
+                  :key="option.mode"
+                  :disabled="themeMode === option.mode"
+                  :command="option.mode"
+                >
+                  {{ option.label }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
+          <el-dropdown @command="handleCommand">
+            <button class="user-trigger" type="button" :aria-label="layoutText.userMenuAria">
+              <el-avatar :size="34" icon="UserFilled" />
+              <span class="username">{{ authStore.user?.nickname || authStore.user?.username }}</span>
+              <el-icon><ArrowDown /></el-icon>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="logout">{{ layoutText.logout }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
       </el-header>
 
-      <!-- 内容区 -->
-      <el-main class="main-content">
+      <el-main id="main-content" class="layout-content">
         <router-view />
       </el-main>
     </el-container>
@@ -104,117 +135,376 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
+import {
+  THEME_I18N,
+  THEME_MODES,
+  THEME_STORAGE_KEY,
+  resolveThemeLocale,
+  type ThemeMode
+} from '@/constants/theme'
+import { MAIN_LAYOUT_I18N } from '@/constants/layout'
+import { BRAND_FULL_NAME, BRAND_SHORT_NAME, BRAND_SUBTITLE } from '@/constants/brand'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const projectStore = useProjectStore()
 
+const themeMessageDuration = 1200
+const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)')
+
 const collapsed = ref(false)
 const activeMenu = computed(() => route.path)
 const currentProject = computed(() => projectStore.currentProject)
 const isSuperAdmin = computed(() => authStore.user?.roles?.includes('SUPER_ADMIN'))
+const themeMode = ref<ThemeMode>(resolveThemeMode())
+const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
+const themeText = THEME_I18N[currentLocale]
+const layoutText = MAIN_LAYOUT_I18N[currentLocale]
+const themeOptions = computed(() => {
+  return THEME_MODES.map((mode) => ({ mode, label: themeText.modeLabels[mode] }))
+})
 
-async function handleCommand(cmd: string) {
-  if (cmd === 'logout') {
-    await authStore.logout()
-    router.push('/login')
+const themeLabel = computed(() => {
+  return themeText.triggerLabels[themeMode.value]
+})
+
+const themeIconName = computed(() => {
+  if (themeMode.value === 'light') {
+    return 'Sunny'
   }
+  if (themeMode.value === 'dark') {
+    return 'Moon'
+  }
+  return 'Monitor'
+})
+
+const routeNameLabelMap: Record<string, string> = layoutText.routeLabels
+
+const currentRouteLabel = computed(() => routeNameLabelMap[String(route.name ?? '')] ?? '')
+
+function toggleSidebar() {
+  collapsed.value = !collapsed.value
+}
+
+function resolveThemeMode(): ThemeMode {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY)
+  if (saved === 'light' || saved === 'dark' || saved === 'system') {
+    return saved
+  }
+  return 'system'
+}
+
+function applyThemeMode(mode: ThemeMode) {
+  const theme = mode === 'system' ? (systemThemeMedia.matches ? 'dark' : 'light') : mode
+  document.documentElement.setAttribute('data-theme', theme)
+}
+
+function handleThemeCommand(command: string) {
+  if (command !== 'light' && command !== 'dark' && command !== 'system') {
+    return
+  }
+
+  themeMode.value = command
+  localStorage.setItem(THEME_STORAGE_KEY, command)
+  applyThemeMode(command)
+
+  ElMessage.info({
+    message: `${themeText.switchedPrefix}${themeText.modeLabels[command]}`,
+    duration: themeMessageDuration
+  })
+}
+
+async function handleCommand(command: string) {
+  if (command !== 'logout') {
+    return
+  }
+  await authStore.logout()
+  await router.push('/login')
 }
 </script>
 
 <style scoped>
-.layout-container {
+.layout-shell {
   height: 100vh;
+  background: var(--app-bg-page);
 }
 
-.sidebar {
-  background-color: #001529;
+.layout-sidebar {
+  border-right: 1px solid var(--app-border-soft);
+  background: var(--app-layout-sidebar-bg);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s;
+  transition: width 0.24s ease;
   overflow: hidden;
 }
 
-.logo {
-  height: 60px;
+.brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-bottom: 1px solid #1f3a5f;
+  gap: var(--space-md);
+  min-height: 84px;
+  padding: 0 var(--space-lg);
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
-.logo-text {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--app-radius-sm);
+  display: grid;
+  place-items: center;
+  font-family: var(--app-font-heading);
+  font-size: 17px;
+  color: var(--app-text-on-primary);
+  letter-spacing: 0.08em;
+  background: var(--app-brand-mark-bg);
+  box-shadow: var(--app-brand-mark-shadow);
 }
 
-.project-label {
-  color: #4a9eff;
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.brand-text strong {
+  font-size: 13px;
+  color: var(--app-text-primary);
+  letter-spacing: 0.02em;
+}
+
+.brand-text small {
   font-size: 12px;
-  padding: 0 20px 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--app-text-muted);
 }
 
-.el-menu {
-  border-right: none;
+.menu-section {
+  margin: var(--space-lg) var(--space-lg) var(--space-xs);
+  font-size: 12px;
+  color: var(--app-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar-menu {
   flex: 1;
-  overflow-y: auto;
+  border-right: none;
+  background: transparent;
+  padding: var(--space-sm);
+}
+
+.sidebar-menu :deep(.el-menu-item) {
+  height: 42px;
+  line-height: 42px;
+  border-radius: var(--app-radius-sm);
+  margin-bottom: var(--space-xs);
+  color: var(--app-text-secondary);
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  background: var(--app-color-primary-soft);
+  color: var(--app-color-primary);
+  font-weight: 600;
 }
 
 .collapse-btn {
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 50px;
+  border: 0;
+  border-top: 1px solid var(--app-border-soft);
+  background: transparent;
   cursor: pointer;
-  color: #a6adb4;
-  border-top: 1px solid #1f3a5f;
-  transition: color 0.2s;
+  color: var(--app-text-secondary);
 }
 
 .collapse-btn:hover {
-  color: #fff;
+  color: var(--app-color-primary);
+  background: var(--app-primary-ghost-bg);
 }
 
-.header {
-  background-color: #fff;
+.layout-main {
+  min-width: 0;
+}
+
+.layout-header {
+  height: 72px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--space-xl);
+  border-bottom: 1px solid var(--app-border-soft);
+  background: var(--app-layout-header-bg);
+  backdrop-filter: blur(8px);
+}
+
+.header-left {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 0 24px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  gap: var(--space-lg);
 }
 
 .header-right {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.user-info {
-  display: flex;
+.project-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--app-radius-pill);
+  border: 1px solid var(--app-border-soft);
+  background: var(--app-bg-elevated);
+}
+
+.project-pill-label {
+  font-size: 12px;
+  color: var(--app-text-muted);
+}
+
+.project-pill-name {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--app-text-primary);
+  font-size: 13px;
+}
+
+.user-trigger {
+  border: 1px solid var(--app-border-soft);
+  background: var(--app-bg-elevated);
+  border-radius: var(--app-radius-pill);
+  height: 44px;
+  padding: 0 var(--space-md) 0 var(--space-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
   cursor: pointer;
+  color: var(--app-text-primary);
+}
+
+.theme-trigger {
+  border: 1px solid var(--app-border-soft);
+  background: var(--app-bg-elevated);
+  border-radius: var(--app-radius-pill);
+  height: 44px;
+  padding: 0 var(--space-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  color: var(--app-text-primary);
+}
+
+.theme-trigger:hover {
+  border-color: var(--app-control-hover-border);
+  box-shadow: var(--app-control-hover-shadow);
+}
+
+.theme-label {
+  font-size: 13px;
+}
+
+.user-trigger:hover {
+  border-color: var(--app-control-hover-border);
+  box-shadow: var(--app-control-hover-shadow);
 }
 
 .username {
-  font-size: 14px;
-  color: #333;
+  font-size: 13px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.main-content {
-  background-color: #f5f5f5;
+.layout-content {
+  padding: var(--space-xl);
   overflow-y: auto;
+}
+
+@media (max-width: 1919px) {
+  .layout-header {
+    padding: 0 var(--space-lg);
+  }
+
+  .layout-content {
+    padding: var(--space-lg);
+  }
+
+  .project-pill-name {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 1439px) {
+  .layout-header {
+    height: 68px;
+    padding: 0 var(--space-md);
+  }
+
+  .header-left {
+    gap: var(--space-md);
+  }
+
+  .project-pill {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .layout-content {
+    padding: var(--space-md);
+  }
+
+  .username {
+    max-width: 110px;
+  }
+}
+
+@media (max-width: 1365px) {
+  .layout-header {
+    height: auto;
+    min-height: 68px;
+    padding-top: var(--space-sm);
+    padding-bottom: var(--space-sm);
+  }
+
+  .header-left,
+  .header-right {
+    width: 100%;
+  }
+
+  .header-right {
+    justify-content: flex-start;
+  }
+
+  .project-pill {
+    display: none;
+  }
+
+  .theme-label {
+    display: none;
+  }
+
+  .theme-trigger {
+    padding: 0 var(--space-sm);
+  }
+
+  .user-trigger {
+    padding: 0 var(--space-sm);
+  }
+
+  .username {
+    max-width: 92px;
+  }
 }
 </style>

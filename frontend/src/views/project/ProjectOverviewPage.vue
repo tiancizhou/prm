@@ -1,62 +1,68 @@
 <template>
-  <div class="overview-page">
+  <div class="app-page overview-page">
+
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">{{ overviewText.pageTitle }}</h1>
+        <p class="page-subtitle">{{ overviewText.pageSubtitle }}</p>
+      </div>
+      <div class="page-actions">
+        <el-button :icon="Edit" type="primary" plain @click="openEditDialog">
+          {{ overviewText.editDescription }}
+        </el-button>
+      </div>
+    </header>
 
     <!-- ═══════════════════ HEADER CARD ═══════════════════ -->
-    <el-card class="header-card" v-loading="loading">
+    <el-card class="header-card surface-card" shadow="never" v-loading="loading">
       <div class="header-inner">
         <div class="header-left">
           <div class="project-title-row">
             <span class="project-code-badge">{{ project?.code }}</span>
-            <h1 class="project-name">{{ project?.name }}</h1>
+            <h2 class="project-name">{{ project?.name }}</h2>
             <el-tag :type="statusType(project?.status)" size="large" effect="light">
               {{ statusLabel(project?.status) }}
             </el-tag>
           </div>
 
           <p class="project-desc">
-            {{ project?.description || '暂无项目描述，点击右侧按钮添加。' }}
+            {{ project?.description || overviewText.emptyDescription }}
           </p>
 
           <div class="meta-row">
             <div class="meta-item">
               <el-icon class="meta-icon"><User /></el-icon>
-              <span class="meta-label">负责人</span>
+              <span class="meta-label">{{ overviewText.metaLabels.owner }}</span>
               <span class="meta-value">{{ project?.ownerName || '-' }}</span>
             </div>
             <div class="meta-divider" />
             <div class="meta-item">
               <el-icon class="meta-icon"><Calendar /></el-icon>
-              <span class="meta-label">开始</span>
+              <span class="meta-label">{{ overviewText.metaLabels.start }}</span>
               <span class="meta-value">{{ formatDate(project?.startDate) }}</span>
             </div>
             <div class="meta-divider" />
             <div class="meta-item">
               <el-icon class="meta-icon"><Aim /></el-icon>
-              <span class="meta-label">截止</span>
+              <span class="meta-label">{{ overviewText.metaLabels.end }}</span>
               <span class="meta-value" :class="{ 'text-danger': isOverdue }">
                 {{ formatDate(project?.endDate) }}
-                <el-tag v-if="isOverdue" type="danger" size="small" style="margin-left:6px">已逾期</el-tag>
+                <el-tag v-if="isOverdue" type="danger" size="small" class="overdue-tag">{{ overviewText.overdueTag }}</el-tag>
               </span>
             </div>
             <div class="meta-divider" />
             <div class="meta-item">
               <el-icon class="meta-icon"><View /></el-icon>
-              <span class="meta-label">可见范围</span>
+              <span class="meta-label">{{ overviewText.metaLabels.visibility }}</span>
               <span class="meta-value">{{ visibilityLabel(project?.visibility) }}</span>
             </div>
             <div class="meta-divider" />
             <div class="meta-item">
               <el-icon class="meta-icon"><Clock /></el-icon>
-              <span class="meta-label">创建</span>
+              <span class="meta-label">{{ overviewText.metaLabels.created }}</span>
               <span class="meta-value">{{ formatDate(project?.createdAt) }}</span>
             </div>
           </div>
-        </div>
-
-        <div class="header-actions">
-          <el-button :icon="Edit" type="primary" plain @click="openEditDialog">
-            编辑描述
-          </el-button>
         </div>
       </div>
     </el-card>
@@ -66,9 +72,9 @@
 
       <!-- 1. Overall Progress -->
       <el-col :span="6">
-        <el-card class="kpi-card" shadow="never">
+        <el-card class="kpi-card surface-card" shadow="never">
           <div class="kpi-header">
-            <span class="kpi-title">项目整体进度</span>
+            <span class="kpi-title">{{ overviewText.kpiTitles.progress }}</span>
             <div class="kpi-icon kpi-icon--blue">
               <el-icon><TrendCharts /></el-icon>
             </div>
@@ -78,87 +84,87 @@
             :percentage="progressPercent"
             :stroke-width="6"
             :show-text="false"
-            color="#409eff"
-            style="margin-top: 8px"
+            color="var(--app-color-primary)"
+            class="kpi-progress"
           />
           <div class="kpi-sub">
-            {{ stats?.doneRequirements ?? 0 }} / {{ stats?.totalRequirements ?? 0 }} 需求已完成
+            {{ stats?.doneRequirements ?? 0 }} / {{ stats?.totalRequirements ?? 0 }} {{ overviewText.requirementsCompleted }}
           </div>
         </el-card>
       </el-col>
 
       <!-- 2. Open Tasks -->
       <el-col :span="6">
-        <el-card class="kpi-card" shadow="never">
+        <el-card class="kpi-card surface-card" shadow="never">
           <div class="kpi-header">
-            <span class="kpi-title">待处理任务</span>
+            <span class="kpi-title">{{ overviewText.kpiTitles.openTasks }}</span>
             <div class="kpi-icon kpi-icon--orange">
               <el-icon><List /></el-icon>
             </div>
           </div>
           <div class="kpi-value kpi-value--orange">{{ stats?.inProgressTasks ?? '-' }}</div>
-          <div class="kpi-sub" style="margin-top: 14px">
+          <div class="kpi-sub kpi-sub--spaced">
             <el-tag v-if="overdueTaskCount > 0" type="warning" size="small">
-              {{ overdueTaskCount }} 项逾期
+              {{ overdueTaskCount }} {{ overviewText.overdueItems }}
             </el-tag>
-            <span v-else class="text-success">✓ 无逾期任务</span>
+            <span v-else class="text-success">{{ overviewText.noOverdueTasks }}</span>
           </div>
         </el-card>
       </el-col>
 
       <!-- 3. Open Bugs -->
       <el-col :span="6">
-        <el-card class="kpi-card" shadow="never">
+        <el-card class="kpi-card surface-card" shadow="never">
           <div class="kpi-header">
-            <span class="kpi-title">未关闭 Bug</span>
+            <span class="kpi-title">{{ overviewText.kpiTitles.openBugs }}</span>
             <div class="kpi-icon kpi-icon--red">
               <el-icon><Warning /></el-icon>
             </div>
           </div>
           <div class="kpi-value kpi-value--red">{{ stats?.openBugs ?? '-' }}</div>
-          <div class="kpi-sub" style="margin-top: 14px">
+          <div class="kpi-sub kpi-sub--spaced">
             <el-tag v-if="(stats?.criticalOpenBugs ?? 0) > 0" type="danger" size="small">
-              {{ stats?.criticalOpenBugs }} 个严重/阻塞
+              {{ stats?.criticalOpenBugs }} {{ overviewText.criticalCountSuffix }}
             </el-tag>
-            <span v-else class="text-success">✓ 无严重 Bug</span>
+            <span v-else class="text-success">{{ overviewText.noCriticalBugs }}</span>
           </div>
         </el-card>
       </el-col>
 
       <!-- 4. Days Left in Sprint -->
       <el-col :span="6">
-        <el-card class="kpi-card" shadow="never">
+        <el-card class="kpi-card surface-card" shadow="never">
           <div class="kpi-header">
-            <span class="kpi-title">当前迭代剩余</span>
+            <span class="kpi-title">{{ overviewText.kpiTitles.sprintDaysLeft }}</span>
             <div class="kpi-icon kpi-icon--purple">
               <el-icon><Timer /></el-icon>
             </div>
           </div>
           <div class="kpi-value" :class="daysLeftClass">
-            {{ daysLeft !== null ? daysLeft : '-' }}<span v-if="daysLeft !== null" class="kpi-unit">天</span>
+            {{ daysLeft !== null ? daysLeft : '-' }}<span v-if="daysLeft !== null" class="kpi-unit">{{ overviewText.dayUnit }}</span>
           </div>
-          <div class="kpi-sub" style="margin-top: 14px">
+          <div class="kpi-sub kpi-sub--spaced">
             <span v-if="activeSprint">{{ activeSprint.name }}</span>
-            <span v-else class="text-muted">暂无活跃迭代</span>
+            <span v-else class="text-muted">{{ overviewText.noActiveSprint }}</span>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- ═══════════════════ MAIN SPLIT LAYOUT ═══════════════════ -->
-    <el-row :gutter="16" class="content-row" style="align-items: flex-start">
+    <el-row :gutter="16" class="content-row">
 
       <!-- ──── LEFT COLUMN (7/10) ──── -->
       <el-col :span="17">
 
         <!-- Trend Chart -->
-        <el-card class="chart-card" shadow="never">
+        <el-card class="chart-card surface-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">任务 &amp; Bug 趋势</span>
+              <span class="card-title">{{ overviewText.trendTitle }}</span>
               <div class="card-header-right">
-                <el-tag type="info" size="small" style="margin-right:8px">近 7 天</el-tag>
-                <el-button link size="small" :icon="Refresh" @click="refreshTrend">刷新</el-button>
+                <el-tag type="info" size="small" class="chart-range-tag">{{ overviewText.recent7Days }}</el-tag>
+                <el-button link size="small" :icon="Refresh" @click="refreshTrend">{{ overviewText.refresh }}</el-button>
               </div>
             </div>
           </template>
@@ -169,7 +175,7 @@
               <line
                 v-for="i in 4" :key="'grid-h-' + i"
                 x1="50" :y1="i * 40" x2="600" :y2="i * 40"
-                stroke="#f0f0f0" stroke-width="1"
+                stroke="var(--app-chart-grid)" stroke-width="1"
               />
               <!-- Y-axis labels -->
               <text
@@ -178,7 +184,7 @@
                 :y="(5 - i) * 40 + 4"
                 text-anchor="end"
                 font-size="11"
-                fill="#bbb"
+                fill="var(--app-chart-axis)"
               >
                 {{ Math.round(maxTrendVal * ((i - 1) / 4)) }}
               </text>
@@ -190,21 +196,21 @@
                 y="196"
                 text-anchor="middle"
                 font-size="11"
-                fill="#bbb"
+                fill="var(--app-chart-axis)"
               >
                 {{ d.date }}
               </text>
 
               <!-- Task area fill -->
-              <path :d="taskAreaPath" fill="#409eff" fill-opacity="0.08" />
+              <path :d="taskAreaPath" fill="var(--app-chart-task)" fill-opacity="0.08" />
               <!-- Bug area fill -->
-              <path :d="bugAreaPath" fill="#f56c6c" fill-opacity="0.08" />
+              <path :d="bugAreaPath" fill="var(--app-chart-bug)" fill-opacity="0.08" />
 
               <!-- Task line -->
               <polyline
                 :points="taskPoints"
                 fill="none"
-                stroke="#409eff"
+                stroke="var(--app-chart-task)"
                 stroke-width="2.5"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -213,7 +219,7 @@
               <polyline
                 :points="bugPoints"
                 fill="none"
-                stroke="#f56c6c"
+                stroke="var(--app-chart-bug)"
                 stroke-width="2.5"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -223,42 +229,42 @@
               <circle
                 v-for="(d, idx) in trendData" :key="'td-' + idx"
                 :cx="chartX(idx)" :cy="chartY(d.tasks)"
-                r="4" fill="#fff" stroke="#409eff" stroke-width="2"
+                r="4" fill="var(--app-bg-elevated)" stroke="var(--app-chart-task)" stroke-width="2"
               />
               <!-- Bug dots -->
               <circle
                 v-for="(d, idx) in trendData" :key="'bd-' + idx"
                 :cx="chartX(idx)" :cy="chartY(d.bugs)"
-                r="4" fill="#fff" stroke="#f56c6c" stroke-width="2"
+                r="4" fill="var(--app-bg-elevated)" stroke="var(--app-chart-bug)" stroke-width="2"
               />
             </svg>
-            <el-empty v-else description="暂无趋势数据" :image-size="80" />
+            <el-empty v-else :description="overviewText.emptyTrend" :image-size="80" />
 
             <!-- Legend -->
             <div class="chart-legend">
               <span class="legend-item">
-                <span class="legend-dot legend-dot--blue"></span>未完成任务
+                <span class="legend-dot legend-dot--blue"></span>{{ overviewText.legendOpenTasks }}
               </span>
               <span class="legend-item">
-                <span class="legend-dot legend-dot--red"></span>未关闭 Bug
+                <span class="legend-dot legend-dot--red"></span>{{ overviewText.legendOpenBugs }}
               </span>
             </div>
           </div>
         </el-card>
 
         <!-- My To-Dos -->
-        <el-card class="todos-card" shadow="never">
+        <el-card class="todos-card surface-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">我的待办</span>
-              <el-button link size="small" :icon="ArrowRight" @click="goToTasks">查看全部任务</el-button>
+              <span class="card-title">{{ overviewText.myTodos }}</span>
+              <el-button link size="small" :icon="ArrowRight" @click="goToTasks">{{ overviewText.viewAllTasks }}</el-button>
             </div>
           </template>
 
-          <div v-if="todosLoading" style="padding: 16px 0; text-align: center">
+          <div v-if="todosLoading" class="section-loading">
             <el-icon class="is-loading" size="24"><Loading /></el-icon>
           </div>
-          <el-empty v-else-if="myTodos.length === 0" description="暂无待办任务，尽情摸鱼 🎉" :image-size="70" />
+          <el-empty v-else-if="myTodos.length === 0" :description="overviewText.emptyTodos" :image-size="70" />
           <div v-else class="todo-list">
             <div
               v-for="task in myTodos"
@@ -272,13 +278,13 @@
                   <div class="todo-title">{{ task.title }}</div>
                   <div class="todo-meta">
                     <el-tag :type="priorityType(task.priority)" size="small" effect="light">
-                      {{ priorityLabel(task.priority) }}优先级
+                      {{ priorityLabel(task.priority) }}{{ overviewText.prioritySuffix }}
                     </el-tag>
                     <span v-if="task.dueDate || task.endDate" class="todo-date" :class="{ 'text-danger': isTaskOverdue(task) }">
-                      <el-icon style="vertical-align: -2px"><Clock /></el-icon>
-                      截止 {{ formatDate(task.dueDate || task.endDate) }}
+                      <el-icon class="todo-date-icon"><Clock /></el-icon>
+                      {{ overviewText.duePrefix }} {{ formatDate(task.dueDate || task.endDate) }}
                     </span>
-                    <el-tag v-if="isTaskOverdue(task)" type="danger" size="small">逾期</el-tag>
+                    <el-tag v-if="isTaskOverdue(task)" type="danger" size="small">{{ overviewText.overdueTag }}</el-tag>
                   </div>
                 </div>
               </div>
@@ -292,20 +298,20 @@
 
       <!-- ──── RIGHT COLUMN (3/10) ──── -->
       <el-col :span="7">
-        <el-card class="activity-card" shadow="never">
+        <el-card class="activity-card surface-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">最近动态</span>
+              <span class="card-title">{{ overviewText.recentActivity }}</span>
               <el-button link size="small" :icon="Refresh" :loading="activityLoading" @click="loadActivity">
-                刷新
+                {{ overviewText.refresh }}
               </el-button>
             </div>
           </template>
 
-          <div v-if="activityLoading && activities.length === 0" style="padding: 16px 0; text-align: center">
+          <div v-if="activityLoading && activities.length === 0" class="section-loading">
             <el-icon class="is-loading" size="24"><Loading /></el-icon>
           </div>
-          <el-empty v-else-if="activities.length === 0" description="暂无近期动态" :image-size="70" />
+          <el-empty v-else-if="activities.length === 0" :description="overviewText.emptyActivities" :image-size="70" />
           <el-timeline v-else class="activity-timeline">
             <el-timeline-item
               v-for="(act, idx) in activities"
@@ -318,7 +324,7 @@
               <div class="activity-item">
                 <span class="activity-actor">{{ act.actor }}</span>
                 <span class="activity-action">{{ act.action }}</span>
-                <span class="activity-target">「{{ act.target }}」</span>
+                <span class="activity-target">{{ overviewText.targetQuoteLeft }}{{ act.target }}{{ overviewText.targetQuoteRight }}</span>
               </div>
             </el-timeline-item>
           </el-timeline>
@@ -329,22 +335,24 @@
     <!-- ═══════════════════ EDIT DESCRIPTION DIALOG ═══════════════════ -->
     <el-dialog
       v-model="editDialogVisible"
-      title="编辑项目描述"
+      :title="overviewText.dialogTitle"
       width="520px"
       :close-on-click-modal="false"
       draggable
     >
       <el-input
         v-model="editDesc"
+        name="projectDescription"
+        autocomplete="off"
         type="textarea"
         :rows="5"
-        placeholder="请输入项目描述..."
+        :placeholder="overviewText.dialogPlaceholder"
         maxlength="500"
         show-word-limit
       />
       <template #footer>
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveDesc" :loading="savingDesc">保存</el-button>
+        <el-button @click="editDialogVisible = false">{{ overviewText.cancel }}</el-button>
+        <el-button type="primary" @click="saveDesc" :loading="savingDesc">{{ overviewText.save }}</el-button>
       </template>
     </el-dialog>
 
@@ -365,12 +373,16 @@ import { dashboardApi } from '@/api/dashboard'
 import { taskApi } from '@/api/task'
 import { sprintApi } from '@/api/sprint'
 import { useProjectStore } from '@/stores/project'
+import { PROJECT_OVERVIEW_I18N } from '@/constants/projectOverview'
+import { resolveThemeLocale } from '@/constants/theme'
 
 // ─── Route & Store ───────────────────────────────────────────────────────────
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
 const projectId = Number(route.params.id)
+const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
+const overviewText = PROJECT_OVERVIEW_I18N[currentLocale]
 
 // ─── Reactive State ──────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -477,50 +489,54 @@ function formatRelativeTime(d?: string | null): string {
   if (isNaN(date.getTime())) return d
   const diffMs = Date.now() - date.getTime()
   const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return '刚刚'
-  if (mins < 60) return `${mins} 分钟前`
+  if (mins < 1) return overviewText.justNow
+  if (mins < 60) return `${mins} ${overviewText.minutesAgo}`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs} 小时前`
+  if (hrs < 24) return `${hrs} ${overviewText.hoursAgo}`
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days} 天前`
+  if (days < 7) return `${days} ${overviewText.daysAgo}`
   return formatDate(d)
 }
 
 // ─── Label / Type Maps ────────────────────────────────────────────────────────
-function statusType(s?: string): '' | 'success' | 'info' | 'warning' | 'danger' {
+function statusType(s?: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' {
   if (s === 'ACTIVE') return 'success'
   if (s === 'ARCHIVED') return 'info'
   return 'danger'
 }
 
 function statusLabel(s?: string): string {
-  const m: Record<string, string> = { ACTIVE: '进行中', ARCHIVED: '已归档', CLOSED: '已关闭' }
+  const m = overviewText.statusLabels
   return s ? (m[s] ?? s) : ''
 }
 
 function visibilityLabel(v?: string): string {
-  return v === 'PUBLIC' ? '公开' : v === 'PRIVATE' ? '私有' : v ?? '-'
+  return v === 'PUBLIC'
+    ? overviewText.visibilityLabels.public
+    : v === 'PRIVATE'
+      ? overviewText.visibilityLabels.private
+      : v ?? '-'
 }
 
-function priorityType(p?: string): '' | 'success' | 'info' | 'warning' | 'danger' {
+function priorityType(p?: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' {
   if (p === 'HIGH') return 'danger'
   if (p === 'MEDIUM') return 'warning'
   return 'info'
 }
 
 function priorityLabel(p?: string): string {
-  const m: Record<string, string> = { HIGH: '高', MEDIUM: '中', LOW: '低' }
+  const m = overviewText.priorityLabels
   return m[p ?? ''] ?? p ?? '-'
 }
 
-function taskStatusType(s?: string): '' | 'success' | 'info' | 'warning' | 'danger' {
+function taskStatusType(s?: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' {
   if (s === 'DONE' || s === 'CLOSED') return 'success'
   if (s === 'IN_PROGRESS') return 'warning'
   return 'info'
 }
 
 function taskStatusLabel(s?: string): string {
-  const m: Record<string, string> = { TODO: '待处理', IN_PROGRESS: '进行中', DONE: '已完成', CLOSED: '已关闭' }
+  const m = overviewText.taskStatusLabels
   return m[s ?? ''] ?? s ?? '-'
 }
 
@@ -609,12 +625,7 @@ async function loadActivity(): Promise<void> {
     const res = await taskApi.list({ projectId, pageSize: 8 })
     const data = (res as any).data
     const list: any[] = data?.records ?? data?.list ?? (Array.isArray(data) ? data : [])
-    const actionMap: Record<string, string> = {
-      DONE: '完成了任务',
-      CLOSED: '关闭了任务',
-      IN_PROGRESS: '开始处理',
-      TODO: '创建了任务'
-    }
+    const actionMap = overviewText.activityActionMap
     const typeMap: Record<string, string> = {
       DONE: 'success',
       CLOSED: 'success',
@@ -622,9 +633,9 @@ async function loadActivity(): Promise<void> {
       TODO: 'primary'
     }
     activities.value = list.slice(0, 8).map((t: any) => ({
-      actor: t.assigneeName ?? t.creatorName ?? '团队成员',
-      action: actionMap[t.status] ?? '更新了',
-      target: t.title ?? `任务 #${t.id}`,
+      actor: t.assigneeName ?? t.creatorName ?? overviewText.teamMemberFallback,
+      action: actionMap[t.status] ?? overviewText.updatedFallback,
+      target: t.title ?? `${overviewText.taskPrefix} #${t.id}`,
       time: formatRelativeTime(t.updatedAt ?? t.createdAt),
       type: typeMap[t.status] ?? 'primary'
     }))
@@ -651,9 +662,9 @@ async function saveDesc(): Promise<void> {
     await projectApi.update(projectId, { description: editDesc.value })
     if (project.value) project.value.description = editDesc.value
     editDialogVisible.value = false
-    ElMessage.success('项目描述已更新')
+    ElMessage.success(overviewText.descUpdated)
   } catch {
-    ElMessage.error('更新失败，请重试')
+    ElMessage.error(overviewText.updateFailed)
   } finally {
     savingDesc.value = false
   }
@@ -676,20 +687,21 @@ onMounted(async () => {
 .overview-page {
   padding: 0;
   min-height: 100%;
+  min-width: 0;
 }
 
 /* ─── Header Card ───────────────────────────────────────────────────────────── */
 .header-card {
-  margin-bottom: 16px;
-  border-radius: 10px;
-  border: 1px solid #e8e8e8;
+  margin-bottom: var(--space-lg);
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border-soft);
 }
 
 .header-inner {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
+  gap: var(--space-xl);
 }
 
 .header-left {
@@ -700,18 +712,18 @@ onMounted(async () => {
 .project-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
 }
 
 .project-code-badge {
   display: inline-block;
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
-  border-radius: 5px;
-  padding: 2px 9px;
+  background: var(--app-color-primary-soft);
+  color: var(--app-color-primary);
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--el-border-radius-small);
+  padding: var(--space-xs) var(--space-sm);
   font-size: 12px;
   font-weight: 700;
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -722,14 +734,14 @@ onMounted(async () => {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--app-text-primary);
   line-height: 1.3;
 }
 
 .project-desc {
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-size: 14px;
-  margin: 0 0 18px;
+  margin: 0 0 var(--space-lg);
   line-height: 1.65;
   max-width: 680px;
 }
@@ -744,10 +756,10 @@ onMounted(async () => {
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 14px;
+  gap: var(--space-xs);
+  padding: 0 var(--space-md);
   font-size: 13px;
-  color: #4b5563;
+  color: var(--app-text-secondary);
 }
 
 .meta-item:first-child {
@@ -755,45 +767,44 @@ onMounted(async () => {
 }
 
 .meta-icon {
-  color: #9ca3af;
+  color: var(--app-text-muted);
   font-size: 14px;
 }
 
 .meta-label {
-  color: #9ca3af;
+  color: var(--app-text-muted);
   font-size: 12px;
 }
 
 .meta-value {
   font-weight: 500;
-  color: #1f2937;
+  color: var(--app-text-primary);
+}
+
+.overdue-tag {
+  margin-left: var(--space-sm);
 }
 
 .meta-divider {
   width: 1px;
   height: 14px;
-  background: #e5e7eb;
+  background: var(--app-border-strong);
   flex-shrink: 0;
-}
-
-.header-actions {
-  flex-shrink: 0;
-  padding-top: 4px;
 }
 
 /* ─── KPI Row ───────────────────────────────────────────────────────────────── */
 .kpi-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-lg);
 }
 
 .kpi-card {
-  border-radius: 10px;
-  border: 1px solid #e8e8e8;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border-soft);
   transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .kpi-card:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+  box-shadow: var(--app-shadow-hover);
   transform: translateY(-2px);
 }
 
@@ -801,19 +812,19 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-md);
 }
 
 .kpi-title {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--app-text-secondary);
   font-weight: 500;
 }
 
 .kpi-icon {
   width: 34px;
   height: 34px;
-  border-radius: 8px;
+  border-radius: var(--el-border-radius-small);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -821,10 +832,10 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.kpi-icon--blue  { background: #eff6ff; color: #2563eb; }
-.kpi-icon--orange { background: #fffbeb; color: #d97706; }
-.kpi-icon--red   { background: #fef2f2; color: #dc2626; }
-.kpi-icon--purple { background: #f5f3ff; color: #7c3aed; }
+.kpi-icon--blue  { background: var(--app-color-primary-soft); color: var(--app-color-primary); }
+.kpi-icon--orange { background: var(--app-color-warning-soft); color: var(--app-color-warning); }
+.kpi-icon--red   { background: var(--app-color-danger-soft); color: var(--app-color-danger); }
+.kpi-icon--purple { background: var(--app-color-accent-soft); color: var(--app-color-accent); }
 
 .kpi-value {
   font-size: 38px;
@@ -837,31 +848,40 @@ onMounted(async () => {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0;
-  margin-left: 2px;
+  margin-left: var(--space-xs);
 }
 
-.kpi-value--blue   { color: #2563eb; }
-.kpi-value--orange { color: #d97706; }
-.kpi-value--red    { color: #dc2626; }
-.kpi-value--purple { color: #7c3aed; }
-.kpi-value--muted  { color: #d1d5db; }
+.kpi-value--blue   { color: var(--app-color-primary); }
+.kpi-value--orange { color: var(--app-color-warning); }
+.kpi-value--red    { color: var(--app-color-danger); }
+.kpi-value--purple { color: var(--app-color-accent); }
+.kpi-value--muted  { color: var(--app-dot-muted); }
 
 .kpi-sub {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--app-text-muted);
   min-height: 22px;
+}
+
+.kpi-progress {
+  margin-top: var(--space-sm);
+}
+
+.kpi-sub--spaced {
+  margin-top: var(--space-md);
 }
 
 /* ─── Split Layout ──────────────────────────────────────────────────────────── */
 .content-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-lg);
+  align-items: flex-start;
 }
 
 /* ─── Chart Card ────────────────────────────────────────────────────────────── */
 .chart-card {
-  margin-bottom: 16px;
-  border-radius: 10px;
-  border: 1px solid #e8e8e8;
+  margin-bottom: var(--space-lg);
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border-soft);
 }
 
 .card-header {
@@ -875,14 +895,18 @@ onMounted(async () => {
   align-items: center;
 }
 
+.chart-range-tag {
+  margin-right: var(--space-sm);
+}
+
 .card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--app-text-primary);
 }
 
 .chart-wrapper {
-  padding-top: 4px;
+  padding-top: var(--space-xs);
 }
 
 .trend-svg {
@@ -892,19 +916,27 @@ onMounted(async () => {
   overflow: visible;
 }
 
+.trend-svg line {
+  stroke: var(--app-chart-grid);
+}
+
+.trend-svg text {
+  fill: var(--app-chart-axis);
+}
+
 .chart-legend {
   display: flex;
-  gap: 20px;
+  gap: var(--space-xl);
   justify-content: center;
-  margin-top: 12px;
+  margin-top: var(--space-md);
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-sm);
   font-size: 12px;
-  color: #6b7280;
+  color: var(--app-text-secondary);
 }
 
 .legend-dot {
@@ -913,50 +945,55 @@ onMounted(async () => {
   border-radius: 50%;
 }
 
-.legend-dot--blue { background: #2563eb; }
-.legend-dot--red  { background: #dc2626; }
+.legend-dot--blue { background: var(--app-color-primary); }
+.legend-dot--red  { background: var(--app-color-danger); }
 
 /* ─── To-Dos Card ───────────────────────────────────────────────────────────── */
 .todos-card {
-  border-radius: 10px;
-  border: 1px solid #e8e8e8;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border-soft);
 }
 
 .todo-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-md);
+}
+
+.section-loading {
+  padding: var(--space-lg) 0;
+  text-align: center;
 }
 
 .todo-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  background: #fafafa;
-  border: 1px solid #f3f4f6;
-  border-radius: 8px;
+  padding: var(--space-md);
+  background: var(--app-bg-muted);
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--el-border-radius-small);
   transition: background 0.15s, border-color 0.15s;
 }
 
 .todo-item:hover {
-  background: #f0f4ff;
-  border-color: #dbeafe;
+  background: var(--app-color-primary-soft);
+  border-color: var(--app-border-strong);
 }
 
 .todo-item--overdue {
-  background: #fff5f5;
-  border-color: #fecaca;
+  background: var(--app-todo-overdue-bg);
+  border-color: var(--app-todo-overdue-border);
 }
 
 .todo-item--overdue:hover {
-  background: #fee2e2;
+  background: var(--app-todo-overdue-hover-bg);
 }
 
 .todo-left {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-md);
   min-width: 0;
 }
 
@@ -965,18 +1002,18 @@ onMounted(async () => {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 6px;
+  margin-top: var(--space-sm);
 }
 
-.dot--green  { background: #22c55e; }
-.dot--orange { background: #f59e0b; }
-.dot--grey   { background: #d1d5db; }
+.dot--green  { background: var(--app-color-success); }
+.dot--orange { background: var(--app-color-warning); }
+.dot--grey   { background: var(--app-dot-muted); }
 
 .todo-title {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 5px;
+  color: var(--app-text-primary);
+  margin-bottom: var(--space-xs);
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -984,60 +1021,136 @@ onMounted(async () => {
   max-width: 380px;
 }
 
+.todo-date-icon {
+  vertical-align: -2px;
+}
+
 .todo-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
   flex-wrap: wrap;
 }
 
 .todo-date {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--app-text-muted);
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-xs);
 }
 
 /* ─── Activity Card ─────────────────────────────────────────────────────────── */
 .activity-card {
-  border-radius: 10px;
-  border: 1px solid #e8e8e8;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border-soft);
 }
 
 .activity-timeline {
-  padding-top: 4px;
+  padding-top: var(--space-xs);
 }
 
 /* Override el-timeline default padding */
 :deep(.el-timeline-item__wrapper) {
-  padding-left: 18px;
+  padding-left: var(--space-lg);
 }
 
 .activity-item {
   font-size: 13px;
   line-height: 1.6;
-  color: #4b5563;
+  color: var(--app-text-secondary);
 }
 
 .activity-actor {
   font-weight: 600;
-  color: #1f2937;
-  margin-right: 3px;
+  color: var(--app-text-primary);
+  margin-right: var(--space-xs);
 }
 
 .activity-action {
-  color: #6b7280;
-  margin-right: 3px;
+  color: var(--app-text-secondary);
+  margin-right: var(--space-xs);
 }
 
 .activity-target {
-  color: #2563eb;
+  color: var(--app-color-primary);
   font-weight: 500;
 }
 
+@media (max-width: 1919px) {
+  .project-name {
+    font-size: 20px;
+  }
+
+  .kpi-value {
+    font-size: 34px;
+  }
+}
+
+@media (max-width: 1439px) {
+  .header-inner {
+    gap: var(--space-lg);
+  }
+
+  .meta-row {
+    row-gap: var(--space-sm);
+  }
+
+  .meta-item {
+    padding: 0 var(--space-sm);
+  }
+
+  .kpi-row :deep(.el-col) {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  .content-row :deep(.el-col) {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .todo-title {
+    max-width: none;
+  }
+}
+
+@media (max-width: 1365px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .meta-row {
+    gap: var(--space-sm);
+  }
+
+  .meta-item {
+    flex: 1 1 calc(50% - var(--space-sm));
+    min-width: 220px;
+    padding: 0;
+  }
+
+  .meta-divider {
+    display: none;
+  }
+
+  .content-row {
+    margin-bottom: var(--space-md);
+  }
+
+  .kpi-row :deep(.el-col) {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .chart-legend {
+    gap: var(--space-md);
+  }
+}
+
 /* ─── Utilities ─────────────────────────────────────────────────────────────── */
-.text-danger  { color: #dc2626 !important; }
-.text-success { color: #16a34a; }
-.text-muted   { color: #9ca3af; }
+.text-danger  { color: var(--app-color-danger) !important; }
+.text-success { color: var(--app-color-success); }
+.text-muted   { color: var(--app-text-muted); }
 </style>

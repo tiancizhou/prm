@@ -1,99 +1,160 @@
 <template>
-  <div>
-    <div class="page-header">
-      <h2>用户管理</h2>
-      <el-button type="primary" icon="Plus" @click="showCreate = true">新建用户</el-button>
-    </div>
-    <el-card>
-      <el-row :gutter="12" style="margin-bottom: 16px">
-        <el-col :span="8">
-          <el-input v-model="keyword" placeholder="搜索 用户名/工号/姓名" clearable @change="load" prefix-icon="Search" />
+  <div class="app-page user-page">
+    <header class="page-header">
+      <div class="title-block">
+        <h1 class="page-title">{{ userText.pageTitle }}</h1>
+        <p class="page-subtitle">{{ userText.pageSubtitle }}</p>
+      </div>
+      <div class="page-actions">
+        <el-button type="primary" :icon="Plus" @click="showCreate = true">{{ userText.buttons.newUser }}</el-button>
+      </div>
+    </header>
+
+    <el-card class="surface-card user-surface" shadow="never">
+      <el-row :gutter="12" class="filter-row">
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-input
+            v-model="keyword"
+            name="userKeyword"
+            autocomplete="off"
+            :aria-label="userText.aria.searchUsers"
+            :placeholder="userText.placeholders.searchUsers"
+            clearable
+            :prefix-icon="Search"
+            @change="load"
+          />
         </el-col>
       </el-row>
-      <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="employeeNo" label="工号" width="100" />
-        <el-table-column prop="realName" label="姓名" width="100" />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="department" label="部门" width="120" />
-        <el-table-column prop="team" label="小组" width="100" />
-        <el-table-column prop="email" label="邮箱" min-width="160" />
-        <el-table-column prop="status" label="状态" width="100">
+
+      <el-table :data="list" v-loading="loading" class="user-table">
+        <el-table-column prop="id" :label="userText.labels.id" width="70" />
+        <el-table-column prop="employeeNo" :label="userText.labels.employeeNo" width="120" />
+        <el-table-column prop="realName" :label="userText.labels.realName" width="120" />
+        <el-table-column prop="username" :label="userText.labels.username" width="140" />
+        <el-table-column prop="department" :label="userText.labels.department" width="130" />
+        <el-table-column prop="team" :label="userText.labels.team" width="120" />
+        <el-table-column prop="email" :label="userText.labels.email" min-width="180" />
+        <el-table-column :label="userText.labels.status" width="110">
           <template #default="{ row }">
             <el-tag :type="row.status === 'ACTIVE' ? 'success' : 'danger'">
-              {{ row.status === 'ACTIVE' ? '正常' : '禁用' }}
+              {{ row.status === 'ACTIVE' ? userText.labels.active : userText.labels.disabled }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="角色" min-width="150">
+        <el-table-column :label="userText.labels.roles" min-width="170">
           <template #default="{ row }">
-            <el-tag v-for="r in row.roles" :key="r" size="small" style="margin-right: 4px">
-              {{ roleNameMap[r] || r }}
-            </el-tag>
+            <el-tag v-for="roleCode in row.roles" :key="roleCode" size="small" class="role-tag">{{ roleNameMap[roleCode] || roleCode }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column :label="userText.labels.actions" width="230" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" link @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" type="warning" v-if="row.status === 'ACTIVE'" @click="toggleStatus(row, 'DISABLED')">禁用</el-button>
-            <el-button size="small" type="success" v-else @click="toggleStatus(row, 'ACTIVE')">启用</el-button>
+            <el-button size="small" type="primary" link @click="openEdit(row)">{{ userText.buttons.edit }}</el-button>
+            <el-button v-if="row.status === 'ACTIVE'" size="small" type="warning" @click="toggleStatus(row, 'DISABLED')">{{ userText.buttons.disable }}</el-button>
+            <el-button v-else size="small" type="success" @click="toggleStatus(row, 'ACTIVE')">{{ userText.buttons.enable }}</el-button>
           </template>
         </el-table-column>
       </el-table>
-      <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total"
-        layout="total, prev, pager, next" style="margin-top: 16px; justify-content: flex-end" @change="load" />
+
+      <div class="table-footer">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="total"
+          layout="total, prev, pager, next"
+          class="page-pagination"
+          @change="load"
+        />
+      </div>
     </el-card>
 
-    <el-dialog v-model="showCreate" title="新建用户" width="520px">
-      <el-form :model="form" label-width="90px">
-        <el-form-item label="用户名" required><el-input v-model="form.username" /></el-form-item>
-        <el-form-item label="初始密码" required><el-input v-model="form.password" type="password" show-password /></el-form-item>
-        <el-form-item label="姓名"><el-input v-model="form.realName" placeholder="与主数据同步" /></el-form-item>
-        <el-form-item label="工号"><el-input v-model="form.employeeNo" placeholder="与主数据同步" /></el-form-item>
-        <el-form-item label="部门"><el-input v-model="form.department" /></el-form-item>
-        <el-form-item label="小组"><el-input v-model="form.team" /></el-form-item>
-        <el-form-item label="邮箱"><el-input v-model="form.email" /></el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="form.roleIds" multiple placeholder="选择系统角色" style="width:100%">
-            <el-option v-for="r in allRoles" :key="r.id" :label="r.name" :value="r.id" />
+    <el-dialog v-model="showCreate" :title="userText.dialogs.createUser" width="560px">
+      <el-form :model="form" label-width="100px">
+        <el-form-item :label="userText.labels.username" required>
+          <el-input v-model="form.username" name="createUsername" autocomplete="off" :placeholder="userText.placeholders.username" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.password" required>
+          <el-input v-model="form.password" name="createPassword" autocomplete="new-password" type="password" show-password :placeholder="userText.placeholders.password" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.realName">
+          <el-input v-model="form.realName" name="createRealName" autocomplete="off" :placeholder="userText.placeholders.syncFromMaster" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.employeeNo">
+          <el-input v-model="form.employeeNo" name="createEmployeeNo" autocomplete="off" :placeholder="userText.placeholders.syncFromMaster" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.department">
+          <el-input v-model="form.department" name="createDepartment" autocomplete="off" :placeholder="userText.placeholders.department" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.team">
+          <el-input v-model="form.team" name="createTeam" autocomplete="off" :placeholder="userText.placeholders.team" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.email">
+          <el-input v-model="form.email" name="createEmail" autocomplete="off" :placeholder="userText.placeholders.email" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.roles">
+          <el-select v-model="form.roleIds" multiple :placeholder="userText.placeholders.selectRoles" class="form-full-width">
+            <el-option v-for="role in allRoles" :key="role.id" :label="role.name" :value="role.id" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="create">创建</el-button>
+        <el-button @click="showCreate = false">{{ userText.buttons.cancel }}</el-button>
+        <el-button type="primary" :loading="creating" @click="create">{{ userText.buttons.create }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showEdit" title="编辑用户" width="520px">
-      <el-form :model="editForm" label-width="90px">
-        <el-form-item label="用户名"><el-input v-model="editForm.username" disabled /></el-form-item>
-        <el-form-item label="姓名"><el-input v-model="editForm.realName" placeholder="与主数据同步" /></el-form-item>
-        <el-form-item label="工号"><el-input v-model="editForm.employeeNo" placeholder="与主数据同步" /></el-form-item>
-        <el-form-item label="部门"><el-input v-model="editForm.department" /></el-form-item>
-        <el-form-item label="小组"><el-input v-model="editForm.team" /></el-form-item>
-        <el-form-item label="邮箱"><el-input v-model="editForm.email" /></el-form-item>
-        <el-form-item label="手机"><el-input v-model="editForm.phone" /></el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="editForm.roleIds" multiple placeholder="选择系统角色" style="width:100%">
-            <el-option v-for="r in allRoles" :key="r.id" :label="r.name" :value="r.id" />
+    <el-dialog v-model="showEdit" :title="userText.dialogs.editUser" width="560px">
+      <el-form :model="editForm" label-width="100px">
+        <el-form-item :label="userText.labels.username">
+          <el-input v-model="editForm.username" name="editUsername" autocomplete="off" disabled />
+        </el-form-item>
+        <el-form-item :label="userText.labels.realName">
+          <el-input v-model="editForm.realName" name="editRealName" autocomplete="off" :placeholder="userText.placeholders.syncFromMaster" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.employeeNo">
+          <el-input v-model="editForm.employeeNo" name="editEmployeeNo" autocomplete="off" :placeholder="userText.placeholders.syncFromMaster" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.department">
+          <el-input v-model="editForm.department" name="editDepartment" autocomplete="off" :placeholder="userText.placeholders.department" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.team">
+          <el-input v-model="editForm.team" name="editTeam" autocomplete="off" :placeholder="userText.placeholders.team" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.email">
+          <el-input v-model="editForm.email" name="editEmail" autocomplete="off" :placeholder="userText.placeholders.email" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.phone">
+          <el-input v-model="editForm.phone" name="editPhone" autocomplete="off" :placeholder="userText.placeholders.phone" />
+        </el-form-item>
+        <el-form-item :label="userText.labels.roles">
+          <el-select v-model="editForm.roleIds" multiple :placeholder="userText.placeholders.selectRoles" class="form-full-width">
+            <el-option v-for="role in allRoles" :key="role.id" :label="role.name" :value="role.id" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEdit = false">取消</el-button>
-        <el-button type="primary" :loading="updating" @click="update">保存</el-button>
+        <el-button @click="showEdit = false">{{ userText.buttons.cancel }}</el-button>
+        <el-button type="primary" :loading="updating" @click="update">{{ userText.buttons.save }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import http from '@/api/http'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import http from '@/api/http'
+import { resolveThemeLocale } from '@/constants/theme'
+import { USER_PAGE_I18N } from '@/constants/user'
 
-interface Role { id: number; name: string; code: string }
+interface Role {
+  id: number
+  name: string
+  code: string
+}
+
+const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
+const userText = USER_PAGE_I18N[currentLocale]
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -102,13 +163,13 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 const allRoles = ref<Role[]>([])
-const roleNameMap = computed<Record<string, string>>(() =>
-  Object.fromEntries(allRoles.value.map(r => [r.code, r.name]))
-)
+const roleNameMap = computed<Record<string, string>>(() => Object.fromEntries(allRoles.value.map(role => [role.code, role.name])))
+
 const showCreate = ref(false)
 const showEdit = ref(false)
 const creating = ref(false)
 const updating = ref(false)
+
 const form = reactive({
   username: '',
   password: '',
@@ -119,6 +180,7 @@ const form = reactive({
   email: '',
   roleIds: [] as number[]
 })
+
 const editForm = reactive({
   id: 0,
   username: '',
@@ -133,32 +195,52 @@ const editForm = reactive({
 
 async function loadRoles() {
   try {
-    const res: any = await http.get('/system/users/roles')
-    allRoles.value = res.data || []
-  } catch {}
+    const response: any = await http.get('/system/users/roles')
+    allRoles.value = response.data || []
+  } catch {
+    allRoles.value = []
+  }
 }
 
 async function load() {
   loading.value = true
   try {
-    const res: any = await http.get('/system/users', { params: { page: page.value, size: pageSize.value, keyword: keyword.value } })
-    list.value = res.data?.records || []; total.value = res.data?.total || 0
-  } finally { loading.value = false }
+    const response: any = await http.get('/system/users', {
+      params: {
+        page: page.value,
+        size: pageSize.value,
+        keyword: keyword.value
+      }
+    })
+    list.value = response.data?.records || []
+    total.value = response.data?.total || 0
+  } finally {
+    loading.value = false
+  }
 }
 
 async function create() {
   if (!form.username.trim() || !form.password.trim()) {
-    ElMessage.warning('用户名和密码为必填'); return
+    ElMessage.warning(userText.messages.requiredUsernamePassword)
+    return
   }
   creating.value = true
   try {
     await http.post('/system/users', { ...form })
-    ElMessage.success('创建成功')
-    form.username = ''; form.password = ''; form.realName = ''
-    form.employeeNo = ''; form.department = ''; form.team = ''
-    form.email = ''; form.roleIds = []
-    showCreate.value = false; load()
-  } finally { creating.value = false }
+    ElMessage.success(userText.messages.created)
+    form.username = ''
+    form.password = ''
+    form.realName = ''
+    form.employeeNo = ''
+    form.department = ''
+    form.team = ''
+    form.email = ''
+    form.roleIds = []
+    showCreate.value = false
+    await load()
+  } finally {
+    creating.value = false
+  }
 }
 
 function openEdit(row: any) {
@@ -186,22 +268,83 @@ async function update() {
       phone: editForm.phone,
       roleIds: editForm.roleIds
     })
-    ElMessage.success('保存成功')
+    ElMessage.success(userText.messages.saved)
     showEdit.value = false
-    load()
+    await load()
   } finally {
     updating.value = false
   }
 }
 
-async function toggleStatus(user: any, status: string) {
+async function toggleStatus(user: any, status: 'ACTIVE' | 'DISABLED') {
   await http.put(`/system/users/${user.id}/status`, null, { params: { status } })
-  ElMessage.success('已更新'); load()
+  ElMessage.success(userText.messages.updated)
+  await load()
 }
 
-onMounted(() => { load(); loadRoles() })
+onMounted(() => {
+  void load()
+  void loadRoles()
+})
 </script>
+
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.page-header h2 { margin: 0; font-size: 20px; }
+.user-page {
+  min-width: 0;
+}
+
+.title-block {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: var(--space-md);
+}
+
+.title-block::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: var(--app-radius-pill);
+  background: linear-gradient(180deg, var(--app-color-primary), var(--app-color-accent));
+}
+
+.user-surface {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-surface:hover {
+  border-color: color-mix(in srgb, var(--app-color-primary) 28%, var(--app-border-soft));
+  box-shadow: var(--app-shadow-soft);
+}
+
+.filter-row {
+  margin-bottom: var(--space-lg);
+}
+
+.user-table {
+  --el-table-border-color: var(--app-border-soft);
+  --el-table-header-bg-color: var(--app-bg-muted);
+}
+
+.user-table :deep(.el-table__row:hover) {
+  background-color: var(--app-bg-muted) !important;
+}
+
+.role-tag {
+  margin-right: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.table-footer {
+  margin-top: var(--space-lg);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-full-width {
+  width: 100%;
+}
 </style>

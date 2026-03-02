@@ -1,0 +1,187 @@
+:root {
+  color-scheme: light;
+
+  --app-font-heading: 'Noto Serif SC', 'Songti SC', serif;
+  --app-font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  --app-color-primary: #1f5edb;
+  --app-color-primary-soft: #e8f0ff;
+  --app-color-success: #159f6c;
+  --app-color-success-soft: #e8f8f1;
+  --app-color-warning: #b97f19;
+  --app-color-warning-soft: #fff5e4;
+  --app-color-danger: #c33f4d;
+  --app-color-danger-soft: #ffeef0;
+  --app-color-info: #4f6278;
+  --app-color-info-soft: #edf2f8;
+  --app-color-accent: #7c3aed;
+  --app-color-accent-soft: #f5f3ff;
+  --app-text-on-primary: #ffffff;
+
+  --app-bg-page: #f3f5f9;
+  --app-bg-surface: #ffffff;
+  --app-bg-muted: #f8f9fc;
+  --app-bg-sidebar: #f7f9fd;
+  --app-bg-elevated: #ffffff;
+  --app-body-bg: radial-gradient(circle at 20% 0%, #f7fbff 0%, var(--app-bg-page) 45%);
+  --app-layout-sidebar-bg: linear-gradient(180deg, #fbfcff 0%, var(--app-bg-sidebar) 100%);
+  --app-layout-header-bg: rgba(255, 255, 255, 0.86);
+  --app-control-hover-border: #c8d5ee;
+  --app-control-hover-shadow: 0 8px 16px rgba(28, 63, 128, 0.08);
+  --app-primary-ghost-bg: rgba(31, 94, 219, 0.06);
+
+  --app-text-primary: #1a2a42;
+  --app-text-secondary: #4f6078;
+  --app-text-muted: #7b8ba1;
+
+  --app-border-soft: #e8edf4;
+  --app-border-strong: #d7dfeb;
+
+  --app-radius-sm: 10px;
+  --app-radius-md: 14px;
+  --app-radius-lg: 18px;
+  --app-radius-pill: 999px;
+
+  --app-shadow-soft: 0 8px 24px rgba(22, 43, 77, 0.06);
+  --app-shadow-panel: 0 16px 36px rgba(22, 43, 77, 0.1);
+  --app-shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.09);
+  --app-table-header-bg: #f8faff;
+  --app-brand-mark-bg: linear-gradient(135deg, #2f6ce3 0%, #1f4fb8 100%);
+  --app-brand-mark-shadow: 0 10px 18px rgba(38, 80, 160, 0.28);
+  --app-todo-overdue-bg: #fff5f5;
+  --app-todo-overdue-hover-bg: #fee2e2;
+  --app-todo-overdue-border: #fecaca;
+  --app-dot-muted: #d1d5db;
+
+  --app-login-shell-bg: linear-gradient(132deg, #f4f8ff 0%, #edf2f9 52%, #f7f8fb 100%);
+  --app-login-hero-bg:
+    radial-gradient(circle at 10% 10%, rgba(46, 91, 194, 0.2) 0%, rgba(46, 91, 194, 0) 42%),
+    radial-gradient(circle at 90% 75%, rgba(40, 124, 122, 0.16) 0%, rgba(40, 124, 122, 0) 42%),
+    linear-gradient(145deg, #f6f9ff 0%, #eef3fb 100%);
+  --app-login-kicker-border: #d7e2f5;
+  --app-login-kicker-text: #34517d;
+  --app-login-title: #1a2a42;
+  --app-login-description: #455978;
+  --app-login-point: #2e4469;
+  --app-login-panel-bg: rgba(255, 255, 255, 0.75);
+  --app-login-panel-border: #e5ecf7;
+  --app-login-label: #2f4264;
+  --app-login-tip: #798ca8;
+  --app-chart-grid: #f0f0f0;
+  --app-chart-axis: #b5bcc9;
+  --app-chart-task: #409eff;
+  --app-chart-bug: #f56c6c;
+  --app-focus-ring: 0 0 0 3px rgba(31, 94, 219, 0.22);
+  --app-form-control-bg: var(--app-bg-surface);
+  --app-form-control-border: var(--app-border-soft);
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 40px;
+  --space-4xl: 56px;
+  --space-5xl: 72px;
+  --space-6xl: 80px;
+
+  --el-color-primary: var(--app-color-primary);
+  --el-color-success: var(--app-color-success);
+  --el-color-warning: var(--app-color-warning);
+  --el-color-danger: var(--app-color-danger);
+  --el-color-info: var(--app-color-info);
+  --el-border-radius-base: var(--app-radius-sm);
+  --el-border-radius-small: 8px;
+  --el-font-family: var(--app-font-body);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --app-color-primary: #6a9bff;
+  --app-color-primary-soft: #1a2f57;
+  --app-color-success: #3ac18f;
+  --app-color-success-soft: #17372d;
+  --app-color-warning: #d6a13b;
+  --app-color-warning-soft: #3b2d15;
+  --app-color-danger: #de6b76;
+  --app-color-danger-soft: #42212a;
+  --app-color-info: #9cb2d2;
+  --app-color-info-soft: #1d304d;
+  --app-color-accent: #b497ff;
+  --app-color-accent-soft: #2f2858;
+  --app-text-on-primary: #ffffff;
+
+  --app-bg-page: #0b1322;
+  --app-bg-surface: #121c2f;
+  --app-bg-muted: #17253e;
+  --app-bg-sidebar: #0f1a2d;
+  --app-bg-elevated: #15233a;
+  --app-body-bg: radial-gradient(circle at 20% 0%, #1a2742 0%, var(--app-bg-page) 45%);
+  --app-layout-sidebar-bg: linear-gradient(180deg, #12213a 0%, var(--app-bg-sidebar) 100%);
+  --app-layout-header-bg: rgba(12, 20, 36, 0.84);
+  --app-control-hover-border: #3a4d72;
+  --app-control-hover-shadow: 0 10px 22px rgba(4, 10, 20, 0.5);
+  --app-primary-ghost-bg: rgba(106, 155, 255, 0.18);
+
+  --app-text-primary: #e8f0ff;
+  --app-text-secondary: #b4c3de;
+  --app-text-muted: #8ea2c5;
+
+  --app-border-soft: #2b3c5a;
+  --app-border-strong: #3b4f74;
+
+  --app-shadow-soft: 0 10px 26px rgba(2, 7, 18, 0.45);
+  --app-shadow-panel: 0 18px 40px rgba(2, 7, 18, 0.6);
+  --app-shadow-hover: 0 10px 26px rgba(2, 7, 18, 0.55);
+  --app-table-header-bg: #1b2a44;
+  --app-brand-mark-bg: linear-gradient(135deg, #3f6ed3 0%, #2f57b5 100%);
+  --app-brand-mark-shadow: 0 10px 20px rgba(2, 10, 25, 0.5);
+  --app-todo-overdue-bg: #3a1f2a;
+  --app-todo-overdue-hover-bg: #4a2330;
+  --app-todo-overdue-border: #704257;
+  --app-dot-muted: #5f7399;
+
+  --app-login-shell-bg: linear-gradient(132deg, #0d172c 0%, #111f36 52%, #101a2e 100%);
+  --app-login-hero-bg:
+    radial-gradient(circle at 10% 10%, rgba(106, 155, 255, 0.18) 0%, rgba(106, 155, 255, 0) 45%),
+    radial-gradient(circle at 90% 75%, rgba(58, 193, 143, 0.14) 0%, rgba(58, 193, 143, 0) 45%),
+    linear-gradient(145deg, #111f36 0%, #152744 100%);
+  --app-login-kicker-border: #38527d;
+  --app-login-kicker-text: #adc3e7;
+  --app-login-title: #edf3ff;
+  --app-login-description: #c4d3ec;
+  --app-login-point: #c5d5f0;
+  --app-login-panel-bg: rgba(16, 26, 44, 0.78);
+  --app-login-panel-border: #2e4266;
+  --app-login-label: #c0d0ea;
+  --app-login-tip: #9fb4d8;
+  --app-chart-grid: #2f4366;
+  --app-chart-axis: #a8bbd8;
+  --app-chart-task: #6da8ff;
+  --app-chart-bug: #f18b95;
+  --app-focus-ring: 0 0 0 3px rgba(106, 155, 255, 0.36);
+  --app-form-control-bg: #1a2a44;
+  --app-form-control-border: #405576;
+
+  --el-color-primary: var(--app-color-primary);
+  --el-color-success: var(--app-color-success);
+  --el-color-warning: var(--app-color-warning);
+  --el-color-danger: var(--app-color-danger);
+  --el-color-info: var(--app-color-info);
+  --el-bg-color: var(--app-bg-surface);
+  --el-bg-color-page: var(--app-bg-page);
+  --el-bg-color-overlay: var(--app-bg-elevated);
+  --el-fill-color-blank: var(--app-bg-surface);
+  --el-fill-color-light: #1e2f4b;
+  --el-fill-color: #223655;
+  --el-fill-color-dark: #2b4368;
+  --el-text-color-primary: var(--app-text-primary);
+  --el-text-color-regular: var(--app-text-secondary);
+  --el-text-color-secondary: var(--app-text-muted);
+  --el-text-color-placeholder: #8196bb;
+  --el-border-color: var(--app-border-soft);
+  --el-border-color-light: var(--app-border-soft);
+  --el-mask-color: rgba(2, 8, 18, 0.72);
+}

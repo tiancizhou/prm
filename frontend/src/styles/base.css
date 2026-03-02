@@ -1,0 +1,237 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--app-font-body);
+  color: var(--app-text-primary);
+  background: var(--app-body-bg);
+}
+
+a {
+  color: inherit;
+}
+
+.skip-link {
+  position: absolute;
+  top: -120px;
+  left: 20px;
+  z-index: 9999;
+  background: var(--app-color-primary);
+  color: var(--app-text-on-primary);
+  border-radius: var(--app-radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.app-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.page-title {
+  margin: 0;
+  font-family: var(--app-font-heading);
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--app-text-primary);
+}
+
+.page-subtitle {
+  margin: var(--space-sm) 0 0;
+  color: var(--app-text-secondary);
+  font-size: 14px;
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.page-actions > * {
+  min-height: 36px;
+}
+
+.surface-card {
+  background: var(--app-bg-surface);
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 180px auto;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  align-items: center;
+}
+
+.el-card {
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+}
+
+.el-card.is-always-shadow {
+  box-shadow: var(--app-shadow-soft);
+}
+
+.el-table {
+  --el-table-header-bg-color: var(--app-table-header-bg);
+  --el-table-border-color: var(--app-border-soft);
+}
+
+.el-table th.el-table__cell {
+  color: var(--app-text-secondary);
+  font-weight: 600;
+}
+
+.el-table td.el-table__cell {
+  color: var(--app-text-primary);
+}
+
+.el-button,
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: var(--app-radius-sm);
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  background: var(--app-form-control-bg);
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--app-form-control-border) inset;
+}
+
+.el-input__wrapper:focus-within,
+.el-select__wrapper:focus-within,
+.el-textarea__inner:focus-within {
+  box-shadow: var(--app-focus-ring);
+}
+
+.el-button:focus-visible,
+.el-input__wrapper:focus-visible,
+.el-select__wrapper:focus-visible,
+.el-textarea__inner:focus-visible,
+.theme-trigger:focus-visible,
+.user-trigger:focus-visible,
+.collapse-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus-ring);
+}
+
+.el-main {
+  --el-main-padding: 0;
+}
+
+:root[data-theme='dark'] .el-table {
+  --el-table-tr-bg-color: var(--app-bg-surface);
+  --el-table-row-hover-bg-color: var(--app-bg-muted);
+}
+
+:root[data-theme='dark'] .el-table th.el-table__cell {
+  background: var(--app-table-header-bg);
+  color: var(--app-text-secondary);
+}
+
+:root[data-theme='dark'] .el-dialog,
+:root[data-theme='dark'] .el-drawer {
+  border: 1px solid var(--app-border-soft);
+  background: var(--app-bg-elevated);
+}
+
+:root[data-theme='dark'] .el-dialog__title,
+:root[data-theme='dark'] .el-drawer__title {
+  color: var(--app-text-primary);
+}
+
+:root[data-theme='dark'] .el-form-item__label {
+  color: var(--app-text-secondary);
+}
+
+@media (max-width: 1919px) {
+  .page-title {
+    font-size: 28px;
+  }
+
+  .filter-bar {
+    grid-template-columns: minmax(260px, 1fr) 170px auto;
+  }
+}
+
+@media (max-width: 1439px) {
+  .app-page {
+    gap: var(--space-md);
+  }
+
+  .page-title {
+    font-size: 26px;
+  }
+
+  .filter-bar {
+    grid-template-columns: minmax(220px, 1fr) 160px auto;
+  }
+}
+
+@media (max-width: 1365px) {
+  .page-title {
+    font-size: 24px;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+  }
+
+  .filter-bar {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .page-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

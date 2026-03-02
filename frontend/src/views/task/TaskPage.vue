@@ -1,65 +1,57 @@
 <template>
-  <div>
-    <div class="page-header">
-      <h2>任务管理</h2>
-      <el-button v-if="isManager" type="primary" icon="Plus" @click="openCreate(null)">新建任务</el-button>
-    </div>
+  <div class="app-page task-page">
+    <header class="page-header">
+      <div class="title-block">
+        <h1 class="page-title">{{ taskText.pageTitle }}</h1>
+        <p class="page-subtitle">{{ taskText.pageSubtitle }}</p>
+      </div>
+      <div class="page-actions">
+        <el-button v-if="isManager" type="primary" :icon="Plus" @click="openCreate(null)">{{ taskText.buttons.newTask }}</el-button>
+      </div>
+    </header>
 
-    <el-card>
+    <el-card class="surface-card task-surface" shadow="never">
       <template #header>
         <div class="card-header">
           <div class="card-header-left">
-            <el-radio-group v-model="viewMode" size="small">
-              <el-radio-button value="board">看板</el-radio-button>
-              <el-radio-button value="list">列表</el-radio-button>
+            <el-radio-group v-model="viewMode" size="small" :aria-label="taskText.aria.viewMode">
+              <el-radio-button value="board">{{ taskText.viewLabels.board }}</el-radio-button>
+              <el-radio-button value="list">{{ taskText.viewLabels.list }}</el-radio-button>
             </el-radio-group>
-            <!-- 管理者可切换；非管理者固定为"我的任务" -->
             <el-button
               v-if="isManager"
               :type="onlyMine ? 'primary' : 'default'"
               size="small"
-              :icon="onlyMine ? 'UserFilled' : 'User'"
+              :icon="onlyMine ? UserFilled : User"
               @click="toggleOnlyMine"
-              style="margin-left: 8px"
+              class="only-mine-toggle"
             >
-              {{ onlyMine ? '我的任务' : '全部任务' }}
+              {{ onlyMine ? taskText.buttons.myTasks : taskText.buttons.allTasks }}
             </el-button>
-            <el-tag v-else type="primary" size="small" style="margin-left: 8px">我的任务</el-tag>
+            <el-tag v-else type="primary" size="small" class="only-mine-tag">{{ taskText.buttons.myTasks }}</el-tag>
           </div>
-          <!-- 需求筛选 -->
           <el-select
             v-model="filterReqId"
-            placeholder="按需求筛选"
+            :aria-label="taskText.aria.filterRequirement"
+            :placeholder="taskText.placeholders.filterRequirement"
             clearable
             size="small"
-            style="width: 200px"
+            class="filter-req-select"
             @change="load"
           >
-            <el-option
-              v-for="req in requirementOptions"
-              :key="req.id"
-              :label="req.title"
-              :value="req.id"
-            />
+            <el-option v-for="req in requirementOptions" :key="req.id" :label="req.title" :value="req.id" />
           </el-select>
         </div>
       </template>
 
-      <!-- 看板 -->
       <div v-if="viewMode === 'board'" class="kanban">
-        <div v-for="col in columns" :key="col.status" class="kanban-col">
+        <div v-for="col in columns" :key="col.status" class="kanban-col" :class="`status-${col.status.toLowerCase()}`">
           <div class="kanban-col-header">
             <span>{{ col.label }}</span>
             <el-badge :value="getTasksByStatus(col.status).length" :type="col.badgeType" />
           </div>
           <div class="kanban-col-body">
-            <el-card
-              v-for="task in getTasksByStatus(col.status)"
-              :key="task.id"
-              class="task-card"
-              shadow="hover"
-            >
-              <!-- 所属需求标签 -->
+            <el-card v-for="task in getTasksByStatus(col.status)" :key="task.id" class="task-card" shadow="hover">
               <el-tag
                 v-if="task.requirementTitle"
                 size="small"
@@ -67,45 +59,38 @@
                 class="req-tag"
                 :title="task.requirementTitle"
               >
-                需求: {{ task.requirementTitle }}
+                {{ taskText.labels.requirementPrefix }}: {{ task.requirementTitle }}
               </el-tag>
               <div class="task-title">{{ task.title }}</div>
               <div class="task-meta">
-                <el-tag size="small" :type="priorityType(task.priority)">{{ task.priority }}</el-tag>
+                <el-tag size="small" :type="priorityType(task.priority)">{{ priorityLabel(task.priority) }}</el-tag>
                 <el-select
                   v-if="isManager"
                   :model-value="task.assigneeId"
-                  placeholder="指派"
+                  :placeholder="taskText.placeholders.assign"
                   size="small"
                   clearable
                   class="assign-select"
-                  @change="(val: number | null) => assignTask(task, val)"
+                  @change="(val: number | undefined) => assignTask(task, val ?? null)"
                   @click.stop
                 >
-                  <el-option label="未指派" :value="null" />
-                  <el-option
-                    v-for="m in memberOptions"
-                    :key="m.userId"
-                    :label="m.nickname || m.username"
-                    :value="m.userId"
-                  />
+                  <el-option v-for="m in memberOptions" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
                 </el-select>
-                <span v-else class="assignee">{{ task.assigneeName || '未指派' }}</span>
+                <span v-else class="assignee">{{ task.assigneeName || taskText.placeholders.unassigned }}</span>
               </div>
               <div v-if="task.dueDate" class="task-due">
-                <el-icon><Calendar /></el-icon> {{ task.dueDate }}
+                <el-icon><Calendar /></el-icon>
+                {{ task.dueDate }}
               </div>
-              <!-- 开发/负责人可改状态、登记工时 -->
               <div v-if="canOperateTask(task)" class="task-actions">
-                <el-dropdown @click.stop @command="(cmd: string) => cmd.startsWith('status:') ? changeStatus(task, cmd.replace('status:', '')) : openWorklog(task)" size="small">
-                  <el-button size="small" link type="primary">操作 <el-icon><ArrowDown /></el-icon></el-button>
+                <el-dropdown @click.stop @command="(cmd: string) => handleBoardCommand(task, cmd)" size="small">
+                  <el-button size="small" link type="primary">{{ taskText.buttons.actions }} <el-icon><ArrowDown /></el-icon></el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item command="status:TODO">改为 待处理</el-dropdown-item>
-                      <el-dropdown-item command="status:IN_PROGRESS">改为 进行中</el-dropdown-item>
-                      <el-dropdown-item command="status:PENDING_REVIEW">改为 待验收</el-dropdown-item>
-                      <el-dropdown-item command="status:DONE">改为 已完成</el-dropdown-item>
-                      <el-dropdown-item divided command="worklog">登记工时</el-dropdown-item>
+                      <el-dropdown-item v-for="opt in statusActionOptions" :key="opt.value" :command="`status:${opt.value}`">
+                        {{ taskText.statusActionPrefix }} {{ opt.label }}
+                      </el-dropdown-item>
+                      <el-dropdown-item divided command="worklog">{{ taskText.buttons.logWork }}</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -115,160 +100,146 @@
         </div>
       </div>
 
-      <!-- 列表 -->
-      <el-table v-else :data="list" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="title" label="标题" min-width="180" />
-        <el-table-column label="所属需求" min-width="140">
+      <el-table v-else :data="list" v-loading="loading" class="task-table">
+        <el-table-column prop="title" :label="taskText.labels.title" min-width="180" />
+        <el-table-column :label="taskText.labels.requirement" min-width="140">
           <template #default="{ row }">
-            <el-tag v-if="row.requirementTitle" size="small" type="success">
-              {{ row.requirementTitle }}
-            </el-tag>
-            <span v-else class="text-muted">—</span>
+            <el-tag v-if="row.requirementTitle" size="small" type="success">{{ row.requirementTitle }}</el-tag>
+            <span v-else class="text-muted">{{ taskText.labels.noneSymbol }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="type" label="类型" width="80" />
-        <el-table-column label="状态" width="100">
+        <el-table-column :label="taskText.labels.type" width="120">
           <template #default="{ row }">
-            <el-tag :type="taskStatusType(row.status)">{{ row.statusLabel }}</el-tag>
+            <span>{{ taskTypeLabel(row.type) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="负责人" width="180">
+        <el-table-column :label="taskText.labels.status" width="140">
+          <template #default="{ row }">
+            <el-tag size="small" :type="taskStatusType(row.status)">{{ taskStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskText.labels.assignee" width="180">
           <template #default="{ row }">
             <el-select
               v-if="isManager"
               :model-value="row.assigneeId"
-              placeholder="指派"
+              :placeholder="taskText.placeholders.assign"
               size="small"
               clearable
-              style="width: 140px"
-              @change="(val: number | null) => assignTask(row, val)"
+              class="assignee-select-cell"
+              @change="(val: number | undefined) => assignTask(row, val ?? null)"
             >
-              <el-option label="未指派" :value="null" />
-              <el-option
-                v-for="m in memberOptions"
-                :key="m.userId"
-                :label="m.nickname || m.username"
-                :value="m.userId"
-              />
+              <el-option v-for="m in memberOptions" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
             </el-select>
-            <span v-else class="assignee">{{ row.assigneeName || '—' }}</span>
+            <span v-else class="assignee">{{ row.assigneeName || taskText.labels.noneSymbol }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="工时" width="140">
+        <el-table-column :label="taskText.labels.hours" width="180">
           <template #default="{ row }">
-            <span class="hours">预估 {{ row.estimatedHours }}h / 已用 {{ row.spentHours }}h</span>
+            <span class="hours">{{ taskText.labels.estimatedPrefix }} {{ row.estimatedHours }}h / {{ taskText.labels.spentPrefix }} {{ row.spentHours }}h</span>
           </template>
         </el-table-column>
-        <el-table-column prop="dueDate" label="截止日期" width="120" />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column prop="dueDate" :label="taskText.labels.dueDate" width="140">
+          <template #default="{ row }">
+            <span>{{ row.dueDate || taskText.labels.noneSymbol }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskText.labels.actions" width="180" fixed="right">
           <template #default="{ row }">
             <template v-if="canOperateTask(row)">
-              <el-dropdown @command="(cmd: string) => changeStatus(row, cmd)" size="small" style="margin-right: 8px">
-                <el-button size="small">状态 <el-icon><ArrowDown /></el-icon></el-button>
+              <el-dropdown @command="(cmd: string) => changeStatus(row, cmd)">
+                <el-button size="small">{{ taskText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="TODO">待处理</el-dropdown-item>
-                    <el-dropdown-item command="IN_PROGRESS">进行中</el-dropdown-item>
-                    <el-dropdown-item command="PENDING_REVIEW">待验收</el-dropdown-item>
-                    <el-dropdown-item command="DONE">已完成</el-dropdown-item>
+                    <el-dropdown-item v-for="opt in statusActionOptions" :key="opt.value" :command="opt.value">{{ opt.label }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
-              <el-button size="small" @click="openWorklog(row)">登记工时</el-button>
+              <el-button size="small" @click="openWorklog(row)">{{ taskText.buttons.logWork }}</el-button>
             </template>
-            <span v-else class="text-muted">—</span>
+            <span v-else class="text-muted">{{ taskText.labels.noneSymbol }}</span>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <!-- 登记工时 -->
-    <el-dialog v-model="showWorklog" title="登记工时" width="400px">
-      <el-form :model="worklogForm" label-width="80px">
-        <el-form-item label="任务">
-          <span>{{ worklogTask?.title }}</span>
+    <el-dialog v-model="showWorklog" :title="taskText.dialogs.worklog" width="400px">
+      <el-form :model="worklogForm" label-width="88px">
+        <el-form-item :label="taskText.labels.task">
+          <el-input :model-value="worklogTask?.title" name="worklogTaskTitle" autocomplete="off" disabled />
         </el-form-item>
-        <el-form-item label="已用工时" required>
-          <el-input-number v-model="worklogForm.spentHours" :min="0.5" :step="0.5" :precision="1" />
-          <span style="margin-left: 8px">小时</span>
+        <el-form-item :label="taskText.labels.spentHours" required>
+          <el-input-number v-model="worklogForm.spentHours" :min="0" :precision="1" />
+          <span class="worklog-unit">{{ taskText.units.hour }}</span>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="worklogForm.remark" type="textarea" rows="2" placeholder="可选" />
+        <el-form-item :label="taskText.labels.remark">
+          <el-input v-model="worklogForm.remark" name="taskWorklogRemark" autocomplete="off" type="textarea" :rows="2" :placeholder="taskText.placeholders.optional" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showWorklog = false">取消</el-button>
-        <el-button type="primary" :loading="worklogSubmitting" @click="submitWorklog">确定</el-button>
+        <el-button @click="showWorklog = false">{{ taskText.buttons.cancel }}</el-button>
+        <el-button type="primary" :loading="worklogSubmitting" @click="submitWorklog">{{ taskText.buttons.confirm }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showCreate" title="新建任务" width="560px">
-      <el-form ref="formRef" :model="form" label-width="100px">
-        <el-form-item label="关联需求">
-          <el-select v-model="form.requirementId" placeholder="可选，选择所属需求" clearable style="width: 100%">
-            <el-option
-              v-for="req in requirementOptions"
-              :key="req.id"
-              :label="req.title"
-              :value="req.id"
-            />
+    <el-dialog v-model="showCreate" :title="taskText.dialogs.createTask" width="560px">
+      <el-form :model="form" label-width="92px">
+        <el-form-item :label="taskText.labels.relatedRequirement">
+          <el-select v-model="form.requirementId" :placeholder="taskText.placeholders.selectRequirement" clearable class="form-full-width">
+            <el-option v-for="req in requirementOptions" :key="req.id" :label="req.title" :value="req.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="任务标题" required>
-          <el-input v-model="form.title" />
+        <el-form-item :label="taskText.labels.taskTitle" required>
+          <el-input v-model="form.title" name="taskTitle" autocomplete="off" :placeholder="taskText.placeholders.taskTitle" />
         </el-form-item>
-        <el-form-item label="任务类型">
+        <el-form-item :label="taskText.labels.taskType">
           <el-select v-model="form.type">
-            <el-option label="任务" value="TASK" />
-            <el-option label="子任务" value="SUBTASK" />
-            <el-option label="技术优化" value="TECH" />
+            <el-option v-for="opt in taskTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="优先级">
+        <el-form-item :label="taskText.labels.priority">
           <el-select v-model="form.priority">
-            <el-option label="低" value="LOW" />
-            <el-option label="中" value="MEDIUM" />
-            <el-option label="高" value="HIGH" />
+            <el-option v-for="opt in taskPriorityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="预估工时">
+        <el-form-item :label="taskText.labels.estimatedHours">
           <el-input-number v-model="form.estimatedHours" :min="0" :precision="1" />
         </el-form-item>
-        <el-form-item label="截止日期">
-          <el-date-picker v-model="form.dueDate" type="date" value-format="YYYY-MM-DD" />
+        <el-form-item :label="taskText.labels.dueDate">
+          <el-date-picker v-model="form.dueDate" type="date" value-format="YYYY-MM-DD" class="form-full-width" />
         </el-form-item>
-        <el-form-item label="负责人">
-          <el-select v-model="form.assigneeId" placeholder="可选" clearable style="width: 100%">
-            <el-option
-              v-for="m in memberOptions"
-              :key="m.userId"
-              :label="m.nickname || m.username"
-              :value="m.userId"
-            />
+        <el-form-item :label="taskText.labels.assignee">
+          <el-select v-model="form.assigneeId" :placeholder="taskText.placeholders.selectAssignee" clearable class="form-full-width">
+            <el-option v-for="m in memberOptions" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="create">创建</el-button>
+        <el-button @click="showCreate = false">{{ taskText.buttons.cancel }}</el-button>
+        <el-button type="primary" :loading="creating" @click="create">{{ taskText.buttons.create }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { taskApi } from '@/api/task'
-import { requirementApi } from '@/api/requirement'
-import { projectApi } from '@/api/project'
-import { useAuthStore } from '@/stores/auth'
+import { ArrowDown, Calendar, Plus, User, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { projectApi } from '@/api/project'
+import { requirementApi } from '@/api/requirement'
+import { taskApi } from '@/api/task'
+import { TASK_PAGE_I18N } from '@/constants/task'
+import { resolveThemeLocale } from '@/constants/theme'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const projectId = Number(route.params.id)
+const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
+const taskText = TASK_PAGE_I18N[currentLocale]
+
 const loading = ref(false)
 const list = ref<any[]>([])
 const viewMode = ref<'board' | 'list'>('board')
@@ -276,23 +247,13 @@ const filterReqId = ref<number | null>(null)
 const requirementOptions = ref<any[]>([])
 const memberOptions = ref<{ userId: number; nickname?: string; username?: string }[]>([])
 
-/** 是否是管理者（超级管理员 或 项目经理） */
 const isManager = computed(() => {
   const roles: string[] = authStore.user?.roles || []
   return roles.includes('SUPER_ADMIN') || roles.includes('PROJECT_ADMIN')
 })
 
-/** 当前用户是否可操作该任务（改状态、登记工时）：管理者 或 任务负责人 */
-function canOperateTask(task: { assigneeId?: number | null }) {
-  if (isManager.value) return true
-  const uid = authStore.user?.userId
-  return uid != null && task.assigneeId != null && task.assigneeId === uid
-}
-
-// 非管理者默认只看自己的任务，且不可切换
 const onlyMine = ref(!isManager.value)
 
-// 登记工时
 const showWorklog = ref(false)
 const worklogSubmitting = ref(false)
 const worklogTask = ref<any>(null)
@@ -302,32 +263,72 @@ const showCreate = ref(false)
 const creating = ref(false)
 const form = reactive({
   title: '',
-  type: 'TASK',
-  priority: 'MEDIUM',
+  type: 'TASK' as 'TASK' | 'SUBTASK' | 'TECH',
+  priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH',
   estimatedHours: 0,
   dueDate: '',
   requirementId: null as number | null,
   assigneeId: null as number | null
 })
 
-const columns = [
-  { status: 'TODO', label: '待处理', badgeType: 'info' as const },
-  { status: 'IN_PROGRESS', label: '进行中', badgeType: 'warning' as const },
-  { status: 'PENDING_REVIEW', label: '待验收', badgeType: 'primary' as const },
-  { status: 'DONE', label: '已完成', badgeType: 'success' as const }
-]
+const statusActionOptions = [...taskText.statusOptions]
+const taskTypeOptions = [...taskText.taskTypeOptions]
+const taskPriorityOptions = [...taskText.taskPriorityOptions]
 
-const priorityTypeMap: Record<string, any> = { LOW: 'info', MEDIUM: '', HIGH: 'warning', CRITICAL: 'danger' }
-const taskStatusTypeMap: Record<string, any> = { TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success' }
+const columns = statusActionOptions.map(opt => ({
+  status: opt.value,
+  label: opt.label,
+  badgeType: ({ TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success' } as const)[opt.value]
+}))
 
-function getTasksByStatus(status: string) { return list.value.filter(t => t.status === status) }
-function priorityType(p: string) { return priorityTypeMap[p] || '' }
-function taskStatusType(s: string) { return taskStatusTypeMap[s] || '' }
+type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
+const priorityTypeMap: Record<string, TagType> = { LOW: 'info', MEDIUM: 'primary', HIGH: 'warning', CRITICAL: 'danger' }
+const taskStatusTypeMap: Record<string, TagType> = { TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success' }
+
+function canOperateTask(task: { assigneeId?: number | null }) {
+  if (isManager.value) return true
+  const userId = authStore.user?.userId
+  return userId != null && task.assigneeId != null && task.assigneeId === userId
+}
+
+function getTasksByStatus(status: string) {
+  return list.value.filter(task => task.status === status)
+}
+
+function priorityType(priority: string): TagType {
+  return priorityTypeMap[priority] || 'info'
+}
+
+function taskStatusType(status: string): TagType {
+  return taskStatusTypeMap[status] || 'info'
+}
+
+function priorityLabel(priority: string) {
+  return taskText.priorityLabels[priority] || priority || taskText.labels.noneSymbol
+}
+
+function taskStatusLabel(status: string) {
+  return taskText.statusLabels[status] || status || taskText.labels.noneSymbol
+}
+
+function taskTypeLabel(type: string) {
+  return taskText.taskTypeLabels[type] || type || taskText.labels.noneSymbol
+}
 
 function toggleOnlyMine() {
-  if (!isManager.value) return  // 非管理者不允许切换
+  if (!isManager.value) return
   onlyMine.value = !onlyMine.value
   load()
+}
+
+function handleBoardCommand(task: any, command: string) {
+  if (command === 'worklog') {
+    openWorklog(task)
+    return
+  }
+  if (command.startsWith('status:')) {
+    void changeStatus(task, command.replace('status:', ''))
+  }
 }
 
 async function load() {
@@ -335,14 +336,13 @@ async function load() {
   try {
     const params: any = { projectId, page: 1, size: 200 }
     if (filterReqId.value) params.requirementId = filterReqId.value
-    // 非管理者后端已强制过滤，前端仍传 assigneeId 以防万一
     if (!isManager.value && authStore.user?.userId) {
       params.assigneeId = authStore.user.userId
     } else if (onlyMine.value && authStore.user?.userId) {
       params.assigneeId = authStore.user.userId
     }
-    const res = await taskApi.list(params)
-    list.value = (res as any).data?.records || []
+    const response = await taskApi.list(params)
+    list.value = (response as any).data?.records || []
   } finally {
     loading.value = false
   }
@@ -350,48 +350,56 @@ async function load() {
 
 async function loadRequirements() {
   try {
-    const res = await requirementApi.list({ projectId, page: 1, size: 200 })
-    requirementOptions.value = (res as any).data?.records || []
-  } catch {}
+    const response = await requirementApi.list({ projectId, page: 1, size: 200 })
+    requirementOptions.value = (response as any).data?.records || []
+  } catch {
+    requirementOptions.value = []
+  }
 }
 
 async function loadMembers() {
   try {
-    const res = await projectApi.getMembers(projectId)
-    memberOptions.value = (res as any).data || []
-  } catch {}
+    const response = await projectApi.getMembers(projectId)
+    memberOptions.value = (response as any).data || []
+  } catch {
+    memberOptions.value = []
+  }
 }
 
 async function assignTask(row: any, assigneeId: number | null) {
   try {
     await taskApi.assign(row.id, assigneeId)
     row.assigneeId = assigneeId ?? undefined
-    row.assigneeName = assigneeId == null ? null : (memberOptions.value.find(m => m.userId === assigneeId)?.nickname || memberOptions.value.find(m => m.userId === assigneeId)?.username)
-    ElMessage.success(assigneeId != null ? '已指派' : '已取消指派')
+    const matchedMember = memberOptions.value.find(member => member.userId === assigneeId)
+    row.assigneeName = assigneeId == null ? null : (matchedMember?.nickname || matchedMember?.username)
+    ElMessage.success(assigneeId != null ? taskText.messages.assigned : taskText.messages.unassigned)
   } catch {
-    load()
+    await load()
   }
 }
 
-function openCreate(reqId: number | null) {
+function openCreate(requirementId: number | null) {
   form.title = ''
   form.type = 'TASK'
   form.priority = 'MEDIUM'
   form.estimatedHours = 0
   form.dueDate = ''
-  form.requirementId = reqId
+  form.requirementId = requirementId
   form.assigneeId = null
   showCreate.value = true
 }
 
 async function create() {
-  if (!form.title.trim()) { ElMessage.warning('请输入任务标题'); return }
+  if (!form.title.trim()) {
+    ElMessage.warning(taskText.messages.titleRequired)
+    return
+  }
   creating.value = true
   try {
     await taskApi.create({ ...form, projectId })
-    ElMessage.success('创建成功')
+    ElMessage.success(taskText.messages.createSuccess)
     showCreate.value = false
-    load()
+    await load()
   } finally {
     creating.value = false
   }
@@ -400,10 +408,10 @@ async function create() {
 async function changeStatus(row: any, status: string) {
   try {
     await taskApi.updateStatus(row.id, status)
-    ElMessage.success('状态已更新')
-    load()
+    ElMessage.success(taskText.messages.statusUpdated)
+    await load()
   } catch {
-    load()
+    await load()
   }
 }
 
@@ -419,38 +427,210 @@ async function submitWorklog() {
   worklogSubmitting.value = true
   try {
     await taskApi.logWork(worklogTask.value.id, worklogForm.spentHours, worklogForm.remark || undefined)
-    ElMessage.success('工时已登记')
+    ElMessage.success(taskText.messages.worklogSuccess)
     showWorklog.value = false
-    load()
+    await load()
   } finally {
     worklogSubmitting.value = false
   }
 }
 
 onMounted(() => {
-  load()
-  loadRequirements()
-  loadMembers()
+  void load()
+  void loadRequirements()
+  void loadMembers()
 })
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.page-header h2 { margin: 0; font-size: 20px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.card-header-left { display: flex; align-items: center; }
-.kanban { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; }
-.kanban-col { flex: 1; min-width: 240px; background: #f5f5f5; border-radius: 8px; padding: 12px; }
-.kanban-col-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; color: #333; }
-.kanban-col-body { display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
-.task-card { cursor: pointer; }
-.req-tag { display: block; margin-bottom: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.task-title { font-size: 13px; color: #333; margin-bottom: 8px; }
-.task-meta { display: flex; justify-content: space-between; align-items: center; }
-.task-due { margin-top: 6px; font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
-.assign-select { width: 100px; font-size: 12px; }
-.assignee { font-size: 12px; color: #999; }
-.hours { font-size: 12px; color: #888; }
-.text-muted { color: #ccc; }
-.task-actions { margin-top: 8px; padding-top: 6px; border-top: 1px solid #eee; }
+.task-page {
+  min-width: 0;
+}
+
+.title-block {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: var(--space-md);
+}
+
+.title-block::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: var(--app-radius-pill);
+  background: linear-gradient(180deg, var(--app-color-primary), var(--app-color-accent));
+}
+
+.task-surface {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.task-surface:hover {
+  border-color: color-mix(in srgb, var(--app-color-primary) 28%, var(--app-border-soft));
+  box-shadow: var(--app-shadow-soft);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.card-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.only-mine-toggle,
+.only-mine-tag {
+  margin-left: 0;
+}
+
+.filter-req-select {
+  width: 220px;
+}
+
+.kanban {
+  display: flex;
+  gap: var(--space-lg);
+  overflow-x: auto;
+  padding-bottom: var(--space-sm);
+}
+
+.kanban-col {
+  flex: 1;
+  min-width: 280px;
+  background: var(--app-bg-muted);
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-sm);
+  padding: var(--space-md);
+}
+
+.kanban-col.status-todo {
+  border-top: 3px solid color-mix(in srgb, var(--el-color-info) 70%, transparent);
+}
+
+.kanban-col.status-in_progress {
+  border-top: 3px solid color-mix(in srgb, var(--el-color-warning) 70%, transparent);
+}
+
+.kanban-col.status-pending_review {
+  border-top: 3px solid color-mix(in srgb, var(--app-color-primary) 70%, transparent);
+}
+
+.kanban-col.status-done {
+  border-top: 3px solid color-mix(in srgb, var(--el-color-success) 70%, transparent);
+}
+
+.kanban-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.kanban-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 80px;
+}
+
+.task-card {
+  cursor: pointer;
+  border: 1px solid var(--app-border-soft);
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.task-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--app-color-primary) 35%, var(--app-border-soft));
+}
+
+.req-tag {
+  display: block;
+  margin-bottom: var(--space-sm);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-title {
+  font-size: 13px;
+  color: var(--app-text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.task-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.task-due {
+  margin-top: var(--space-sm);
+  font-size: 12px;
+  color: var(--app-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.assign-select {
+  width: 110px;
+  font-size: 12px;
+}
+
+.assignee-select-cell {
+  width: 140px;
+}
+
+.assignee {
+  font-size: 12px;
+  color: var(--app-text-muted);
+}
+
+.hours {
+  font-size: 12px;
+  color: var(--app-text-secondary);
+}
+
+.text-muted {
+  color: var(--app-text-muted);
+}
+
+.task-actions {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--app-border-soft);
+}
+
+.task-table {
+  --el-table-border-color: var(--app-border-soft);
+  --el-table-header-bg-color: var(--app-bg-muted);
+}
+
+.task-table :deep(.el-table__row:hover) {
+  background-color: var(--app-bg-muted) !important;
+}
+
+.worklog-unit {
+  margin-left: var(--space-sm);
+}
+
+.form-full-width {
+  width: 100%;
+}
 </style>
