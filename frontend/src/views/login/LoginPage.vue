@@ -34,6 +34,7 @@
           :model="form"
           :rules="rules"
           size="large"
+          label-width="72px"
           class="login-form"
           @keyup.enter="handleLogin"
         >
@@ -225,6 +226,10 @@ async function handleLogin() {
 .login-form :deep(.el-form-item__label) {
   font-weight: 600;
   color: var(--app-login-label);
+}
+
+.login-form :deep(.el-input) {
+  width: 100%;
 }
 
 .login-btn {

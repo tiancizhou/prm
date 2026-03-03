@@ -36,7 +36,7 @@ export const LOGIN_PAGE_I18N: Record<
     pageSubtitle: '请输入账号信息以继续访问系统。',
     usernameLabel: '用户名',
     usernamePlaceholder: '请输入用户名…',
-    passwordLabel: '密码',
+    passwordLabel: '密　码',
     passwordPlaceholder: '请输入密码…',
     loginButton: '登录系统',
     loginTip: '默认账号：admin / Admin@123',

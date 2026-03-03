@@ -140,6 +140,24 @@ a {
   background: var(--app-form-control-bg);
 }
 
+/* 覆盖浏览器 autofill 蓝色/黄色高亮背景 */
+.el-input__wrapper input:-webkit-autofill,
+.el-input__wrapper input:-webkit-autofill:hover,
+.el-input__wrapper input:-webkit-autofill:focus,
+.el-input__wrapper input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: var(--app-text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+:root[data-theme='dark'] .el-input__wrapper input:-webkit-autofill,
+:root[data-theme='dark'] .el-input__wrapper input:-webkit-autofill:hover,
+:root[data-theme='dark'] .el-input__wrapper input:-webkit-autofill:focus,
+:root[data-theme='dark'] .el-input__wrapper input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1a2a44 inset !important;
+  -webkit-text-fill-color: var(--app-text-primary) !important;
+}
+
 .el-input__wrapper:hover,
 .el-select__wrapper:hover,
 .el-textarea__inner:hover {
