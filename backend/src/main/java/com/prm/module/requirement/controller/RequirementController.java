@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Tag(name = "需求管理")
 @RestController
@@ -28,6 +28,7 @@ import java.util.List;
 public class RequirementController {
 
     private final RequirementService requirementService;
+    private static final Pattern OFFSET_OR_ZONE_SUFFIX = Pattern.compile(".*(?:[zZ]|[+-]\\d{2}:\\d{2})$");
     private static final List<DateTimeFormatter> FLEXIBLE_DATE_TIME_FORMATTERS = List.of(
             DateTimeFormatter.ISO_LOCAL_DATE_TIME,
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
@@ -89,14 +90,8 @@ public class RequirementController {
         }
 
         String value = text.trim();
-        try {
-            return LocalDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME);
-        } catch (DateTimeParseException ignored) {
-        }
-
-        try {
-            return OffsetDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME).toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
+        if (OFFSET_OR_ZONE_SUFFIX.matcher(value).matches()) {
+            throw BizException.of(fieldName + " 不支持时区偏移，请使用本地时间 yyyy-MM-ddTHH:mm");
         }
 
         for (DateTimeFormatter formatter : FLEXIBLE_DATE_TIME_FORMATTERS) {
@@ -106,7 +101,7 @@ public class RequirementController {
             }
         }
 
-        throw BizException.of(fieldName + " 时间格式不正确，请使用 yyyy-MM-ddTHH:mm:ss");
+        throw BizException.of(fieldName + " 时间格式不正确，请使用本地时间 yyyy-MM-ddTHH:mm");
     }
 
     @Operation(summary = "添加需求评审记录")
