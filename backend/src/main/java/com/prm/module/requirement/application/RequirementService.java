@@ -180,9 +180,7 @@ public class RequirementService {
                                        LocalDateTime actualEndAt,
                                        String verificationScenario,
                                        String verificationSteps,
-                                       String verificationResult,
-                                       String verificationConclusion,
-                                       String verificationMethod) {
+                                       String verificationResult) {
         Requirement r = requirementMapper.selectById(id);
         if (r == null) throw BizException.notFound("需求");
         ensureRequirementEditable(r);
@@ -193,7 +191,6 @@ public class RequirementService {
             String resolvedVerificationScenario = requireDoneVerificationField(verificationScenario, "验证场景");
             String resolvedVerificationSteps = requireDoneVerificationField(verificationSteps, "验证步骤");
             String resolvedVerificationResult = requireDoneVerificationField(verificationResult, "实际结果");
-            String resolvedVerificationConclusion = requireDoneVerificationField(verificationConclusion, "结论");
 
             r.setActualStartAt(actualStartAt);
             r.setActualEndAt(actualEndAt);
@@ -201,8 +198,6 @@ public class RequirementService {
             r.setVerificationScenario(resolvedVerificationScenario);
             r.setVerificationSteps(resolvedVerificationSteps);
             r.setVerificationResult(resolvedVerificationResult);
-            r.setVerificationConclusion(resolvedVerificationConclusion);
-            r.setVerificationMethod(StringUtils.hasText(verificationMethod) ? verificationMethod.trim() : null);
         } else {
             r.setActualStartAt(null);
             r.setActualEndAt(null);
@@ -254,8 +249,6 @@ public class RequirementService {
         dto.setVerificationScenario(r.getVerificationScenario());
         dto.setVerificationSteps(r.getVerificationSteps());
         dto.setVerificationResult(r.getVerificationResult());
-        dto.setVerificationConclusion(r.getVerificationConclusion());
-        dto.setVerificationMethod(r.getVerificationMethod());
         dto.setAcceptanceCriteria(r.getAcceptanceCriteria());
         dto.setStartDate(r.getStartDate());
         dto.setDueDate(r.getDueDate());

@@ -17,10 +17,10 @@ import com.prm.module.system.mapper.SysUserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -127,11 +127,9 @@ class RequirementServicePermissionTests {
                     "DONE",
                     LocalDateTime.of(2026, 3, 1, 9, 0),
                     LocalDateTime.of(2026, 3, 1, 15, 30),
-                    "核心流程回归",
-                    "执行主流程并检查输出",
-                    "输出符合预期",
-                    "通过",
-                    "自测"))
+                    "Core flow regression",
+                    "Run main flow and verify output",
+                    "Output matches expectation"))
                     .doesNotThrowAnyException();
 
             verify(requirementMapper).updateById(any(Requirement.class));
@@ -154,11 +152,9 @@ class RequirementServicePermissionTests {
                     "DONE",
                     null,
                     null,
-                    "核心流程回归",
-                    "执行主流程并检查输出",
-                    "输出符合预期",
-                    "通过",
-                    "自测"))
+                    "Core flow regression",
+                    "Run main flow and verify output",
+                    "Output matches expectation"))
                     .isInstanceOf(BizException.class)
                     .hasMessageContaining("时间");
         }
@@ -181,10 +177,8 @@ class RequirementServicePermissionTests {
                     LocalDateTime.of(2026, 3, 2, 9, 15),
                     LocalDateTime.of(2026, 3, 2, 11, 45),
                     "",
-                    "执行主流程并检查输出",
-                    "输出符合预期",
-                    "通过",
-                    null))
+                    "Run main flow and verify output",
+                    "Output matches expectation"))
                     .isInstanceOf(BizException.class)
                     .hasMessageContaining("验证场景");
         }
@@ -206,11 +200,9 @@ class RequirementServicePermissionTests {
                     "DONE",
                     LocalDateTime.of(2026, 3, 2, 9, 15),
                     LocalDateTime.of(2026, 3, 2, 11, 45),
-                    "核心流程回归",
-                    "执行主流程并检查输出",
-                    "输出符合预期",
-                    "通过",
-                    "联调");
+                    "Core flow regression",
+                    "Run main flow and verify output",
+                    "Output matches expectation");
 
             assertThat(dto.getActualHours()).isEqualByComparingTo("2.50");
 
@@ -220,11 +212,9 @@ class RequirementServicePermissionTests {
             assertThat(persisted.getActualStartAt()).isEqualTo(LocalDateTime.of(2026, 3, 2, 9, 15));
             assertThat(persisted.getActualEndAt()).isEqualTo(LocalDateTime.of(2026, 3, 2, 11, 45));
             assertThat(persisted.getActualHours()).isEqualByComparingTo("2.50");
-            assertThat(persisted.getVerificationScenario()).isEqualTo("核心流程回归");
-            assertThat(persisted.getVerificationSteps()).isEqualTo("执行主流程并检查输出");
-            assertThat(persisted.getVerificationResult()).isEqualTo("输出符合预期");
-            assertThat(persisted.getVerificationConclusion()).isEqualTo("通过");
-            assertThat(persisted.getVerificationMethod()).isEqualTo("联调");
+            assertThat(persisted.getVerificationScenario()).isEqualTo("Core flow regression");
+            assertThat(persisted.getVerificationSteps()).isEqualTo("Run main flow and verify output");
+            assertThat(persisted.getVerificationResult()).isEqualTo("Output matches expectation");
         }
     }
 

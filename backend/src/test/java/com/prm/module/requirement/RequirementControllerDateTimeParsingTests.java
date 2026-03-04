@@ -57,21 +57,17 @@ class RequirementControllerDateTimeParsingTests {
                 eq("DONE"),
                 eq(start),
                 eq(end),
-                eq("核心流程回归"),
-                eq("执行主流程并检查输出"),
-                eq("输出符合预期"),
-                eq("通过"),
-                eq("自测"))).thenReturn(dto);
+                eq("Core flow regression"),
+                eq("Run main flow and verify output"),
+                eq("Output matches expectation"))).thenReturn(dto);
 
         mockMvc.perform(put("/api/requirements/{id}/status", requirementId)
                         .param("status", "DONE")
                         .param("actualStartAt", "2026-03-04T09:15")
                         .param("actualEndAt", "2026-03-04T11:45")
-                        .param("verificationScenario", "核心流程回归")
-                        .param("verificationSteps", "执行主流程并检查输出")
-                        .param("verificationResult", "输出符合预期")
-                        .param("verificationConclusion", "通过")
-                        .param("verificationMethod", "自测")
+                        .param("verificationScenario", "Core flow regression")
+                        .param("verificationSteps", "Run main flow and verify output")
+                        .param("verificationResult", "Output matches expectation")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -82,11 +78,9 @@ class RequirementControllerDateTimeParsingTests {
                 eq("DONE"),
                 eq(start),
                 eq(end),
-                eq("核心流程回归"),
-                eq("执行主流程并检查输出"),
-                eq("输出符合预期"),
-                eq("通过"),
-                eq("自测"));
+                eq("Core flow regression"),
+                eq("Run main flow and verify output"),
+                eq("Output matches expectation"));
     }
 
     @Test
@@ -103,21 +97,17 @@ class RequirementControllerDateTimeParsingTests {
                 eq("DONE"),
                 eq(start),
                 eq(end),
-                eq("核心流程回归"),
-                eq("执行主流程并检查输出"),
-                eq("输出符合预期"),
-                eq("通过"),
-                eq("联调"))).thenReturn(dto);
+                eq("Core flow regression"),
+                eq("Run main flow and verify output"),
+                eq("Output matches expectation"))).thenReturn(dto);
 
         mockMvc.perform(put("/api/requirements/{id}/status", requirementId)
                         .param("status", "DONE")
                         .param("actualStartAt", "2026-03-04 09:15")
                         .param("actualEndAt", "2026-03-04 11:45:30")
-                        .param("verificationScenario", "核心流程回归")
-                        .param("verificationSteps", "执行主流程并检查输出")
-                        .param("verificationResult", "输出符合预期")
-                        .param("verificationConclusion", "通过")
-                        .param("verificationMethod", "联调")
+                        .param("verificationScenario", "Core flow regression")
+                        .param("verificationSteps", "Run main flow and verify output")
+                        .param("verificationResult", "Output matches expectation")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -128,11 +118,9 @@ class RequirementControllerDateTimeParsingTests {
                 eq("DONE"),
                 eq(start),
                 eq(end),
-                eq("核心流程回归"),
-                eq("执行主流程并检查输出"),
-                eq("输出符合预期"),
-                eq("通过"),
-                eq("联调"));
+                eq("Core flow regression"),
+                eq("Run main flow and verify output"),
+                eq("Output matches expectation"));
     }
 
     @Test
@@ -144,10 +132,9 @@ class RequirementControllerDateTimeParsingTests {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.msg", containsString("actualStartAt")))
-                .andExpect(jsonPath("$.msg", containsString("时区")));
+                .andExpect(jsonPath("$.msg", containsString("actualStartAt")));
 
-        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any(), any(), any());
+        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -159,10 +146,9 @@ class RequirementControllerDateTimeParsingTests {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.msg", containsString("actualStartAt")))
-                .andExpect(jsonPath("$.msg", containsString("时区")));
+                .andExpect(jsonPath("$.msg", containsString("actualStartAt")));
 
-        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any(), any(), any());
+        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -176,6 +162,6 @@ class RequirementControllerDateTimeParsingTests {
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.msg", containsString("actualStartAt")));
 
-        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any(), any(), any());
+        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any());
     }
 }

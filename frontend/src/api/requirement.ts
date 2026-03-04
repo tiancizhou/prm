@@ -6,8 +6,6 @@ export interface RequirementDoneVerificationPayload {
   verificationScenario?: string
   verificationSteps?: string
   verificationResult?: string
-  verificationConclusion?: string
-  verificationMethod?: string
 }
 
 export const requirementApi = {
@@ -22,8 +20,6 @@ export const requirementApi = {
     if (payload?.verificationScenario) params.verificationScenario = payload.verificationScenario
     if (payload?.verificationSteps) params.verificationSteps = payload.verificationSteps
     if (payload?.verificationResult) params.verificationResult = payload.verificationResult
-    if (payload?.verificationConclusion) params.verificationConclusion = payload.verificationConclusion
-    if (payload?.verificationMethod) params.verificationMethod = payload.verificationMethod
     return http.put(`/requirements/${id}/status`, null, { params })
   },
   addReview: (id: number, conclusion: string, remark?: string) =>

@@ -470,8 +470,6 @@
           <el-descriptions-item :label="doneVerificationText.scenarioLabel" :span="2">{{ detailReq.verificationScenario || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="doneVerificationText.stepsLabel" :span="2">{{ detailReq.verificationSteps || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="doneVerificationText.resultLabel" :span="2">{{ detailReq.verificationResult || requirementText.detail.noneSymbol }}</el-descriptions-item>
-          <el-descriptions-item :label="doneVerificationText.conclusionLabel" :span="2">{{ detailReq.verificationConclusion || requirementText.detail.noneSymbol }}</el-descriptions-item>
-          <el-descriptions-item :label="doneVerificationText.methodLabel" :span="2">{{ detailReq.verificationMethod || requirementText.detail.noneSymbol }}</el-descriptions-item>
         </el-descriptions>
         <div class="detail-section">
           <div class="detail-section-title">{{ requirementText.detail.attachments }}</div>
@@ -522,11 +520,18 @@
         <el-form-item :label="doneVerificationText.resultLabel" required>
           <el-input v-model="doneStatusForm.verificationResult" type="textarea" :rows="2" :placeholder="doneVerificationText.resultPlaceholder" />
         </el-form-item>
-        <el-form-item :label="doneVerificationText.conclusionLabel" required>
-          <el-input v-model="doneStatusForm.verificationConclusion" :placeholder="doneVerificationText.conclusionPlaceholder" />
-        </el-form-item>
-        <el-form-item :label="doneVerificationText.methodLabel">
-          <el-input v-model="doneStatusForm.verificationMethod" :placeholder="doneVerificationText.methodPlaceholder" />
+        <el-form-item :label="doneScreenshotText.screenshotsLabel">
+          <el-upload
+            v-model:file-list="doneScreenshotFileList"
+            :auto-upload="false"
+            :before-upload="beforeDoneScreenshotUpload"
+            :show-file-list="true"
+            accept="image/*"
+            multiple
+          >
+            <el-button type="primary" plain :icon="UploadFilled" :loading="doneStatusSubmitting">{{ doneScreenshotText.uploadScreenshots }}</el-button>
+          </el-upload>
+          <div class="form-tip">{{ doneScreenshotText.screenshotsHint }}</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -616,6 +621,26 @@ const doneVerificationText = currentLocale === 'zh-CN'
       conclusionPlaceholder: 'e.g. Pass',
       methodPlaceholder: 'e.g. Self-test / Joint test / Regression',
       requiredMessage: 'Please complete the verification template when marking done'
+    }
+
+const doneRequiredMessage = currentLocale === 'zh-CN'
+  ? '完成需求时请补全验证场景、步骤和实际结果'
+  : 'Please complete scenario, steps, and result when marking done'
+
+const doneScreenshotText = currentLocale === 'zh-CN'
+  ? {
+      screenshotsLabel: '验证截图（可选）',
+      uploadScreenshots: '上传截图',
+      screenshotsHint: '支持多张图片，非必填',
+      screenshotTypeInvalid: '只能上传图片文件',
+      screenshotUploadPartialFailed: '部分截图上传失败，请稍后重试'
+    }
+  : {
+      screenshotsLabel: 'Screenshots (Optional)',
+      uploadScreenshots: 'Upload Screenshots',
+      screenshotsHint: 'Multiple images are supported and optional',
+      screenshotTypeInvalid: 'Only image files are allowed',
+      screenshotUploadPartialFailed: 'Some screenshots failed to upload, please retry later'
     }
 
 const canManageProject = computed(() => {
@@ -987,14 +1012,13 @@ const taskForm = reactive({ title: '', type: 'TASK', priority: 'MEDIUM', estimat
 const showDoneStatusDialog = ref(false)
 const doneStatusSubmitting = ref(false)
 const doneStatusTarget = ref<any>(null)
+const doneScreenshotFileList = ref<any[]>([])
 const doneStatusForm = reactive({
   actualStartAt: '',
   actualEndAt: '',
   verificationScenario: '',
   verificationSteps: '',
-  verificationResult: '',
-  verificationConclusion: '',
-  verificationMethod: ''
+  verificationResult: ''
 })
 
 async function load() {
@@ -1246,8 +1270,7 @@ function openDoneStatusDialog(row: any) {
   doneStatusForm.verificationScenario = ''
   doneStatusForm.verificationSteps = ''
   doneStatusForm.verificationResult = ''
-  doneStatusForm.verificationConclusion = ''
-  doneStatusForm.verificationMethod = ''
+  doneScreenshotFileList.value = []
   showDoneStatusDialog.value = true
 }
 
@@ -1259,8 +1282,15 @@ function closeDoneStatusDialog() {
   doneStatusForm.verificationScenario = ''
   doneStatusForm.verificationSteps = ''
   doneStatusForm.verificationResult = ''
-  doneStatusForm.verificationConclusion = ''
-  doneStatusForm.verificationMethod = ''
+  doneScreenshotFileList.value = []
+}
+
+function beforeDoneScreenshotUpload(file: File) {
+  if (!file.type || !file.type.startsWith('image/')) {
+    ElMessage.warning(doneScreenshotText.screenshotTypeInvalid)
+    return false
+  }
+  return false
 }
 
 async function submitDoneStatus() {
@@ -1274,9 +1304,8 @@ async function submitDoneStatus() {
 
   if (!doneStatusForm.verificationScenario.trim()
     || !doneStatusForm.verificationSteps.trim()
-    || !doneStatusForm.verificationResult.trim()
-    || !doneStatusForm.verificationConclusion.trim()) {
-    ElMessage.warning(doneVerificationText.requiredMessage)
+    || !doneStatusForm.verificationResult.trim()) {
+    ElMessage.warning(doneRequiredMessage)
     return
   }
 
@@ -1294,10 +1323,24 @@ async function submitDoneStatus() {
       actualEndAt: doneStatusForm.actualEndAt,
       verificationScenario: doneStatusForm.verificationScenario.trim(),
       verificationSteps: doneStatusForm.verificationSteps.trim(),
-      verificationResult: doneStatusForm.verificationResult.trim(),
-      verificationConclusion: doneStatusForm.verificationConclusion.trim(),
-      verificationMethod: doneStatusForm.verificationMethod.trim()
+      verificationResult: doneStatusForm.verificationResult.trim()
     })
+
+    let screenshotUploadFailed = false
+    for (const item of doneScreenshotFileList.value) {
+      const raw = item?.raw as File | undefined
+      if (!raw) continue
+      try {
+        await requirementApi.uploadAttachment(doneStatusTarget.value.id, raw)
+      } catch {
+        screenshotUploadFailed = true
+      }
+    }
+
+    if (screenshotUploadFailed) {
+      ElMessage.warning(doneScreenshotText.screenshotUploadPartialFailed)
+    }
+
     ElMessage.success(requirementText.messages.statusUpdated)
     closeDoneStatusDialog()
     await load()

@@ -80,9 +80,7 @@ public class RequirementController {
                                           @RequestParam(required = false) String actualEndAt,
                                           @RequestParam(required = false) String verificationScenario,
                                           @RequestParam(required = false) String verificationSteps,
-                                          @RequestParam(required = false) String verificationResult,
-                                          @RequestParam(required = false) String verificationConclusion,
-                                          @RequestParam(required = false) String verificationMethod) {
+                                          @RequestParam(required = false) String verificationResult) {
         LocalDateTime resolvedActualStartAt = parseDateTimeParameter(actualStartAt, "actualStartAt");
         LocalDateTime resolvedActualEndAt = parseDateTimeParameter(actualEndAt, "actualEndAt");
 
@@ -93,9 +91,7 @@ public class RequirementController {
                 resolvedActualEndAt,
                 verificationScenario,
                 verificationSteps,
-                verificationResult,
-                verificationConclusion,
-                verificationMethod));
+                verificationResult));
     }
 
     private LocalDateTime parseDateTimeParameter(String text, String fieldName) {
