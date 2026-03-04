@@ -1,7 +1,7 @@
 <template>
   <div class="app-page req-page">
 
-    <!-- ═══════════════════ HEADER: Title + View Toggles + Actions ═══════════════════ -->
+    <!-- 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?HEADER: Title + View Toggles + Actions 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?-->
     <header class="page-header">
       <div class="header-left">
         <div class="title-block">
@@ -40,7 +40,7 @@
       </div>
     </header>
 
-    <!-- ═══════════════════ QUICK VIEW TABS ═══════════════════ -->
+    <!-- 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?QUICK VIEW TABS 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?-->
     <div class="quick-tabs">
       <button
         v-for="tab in quickTabs"
@@ -53,7 +53,7 @@
       </button>
     </div>
 
-    <!-- ═══════════════════ ADVANCED FILTER BAR ═══════════════════ -->
+    <!-- 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?ADVANCED FILTER BAR 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?-->
     <div class="filter-bar">
       <el-input
         v-model="query.keyword"
@@ -137,7 +137,7 @@
       </div>
     </div>
 
-    <!-- ═══════════════════ DATA TABLE ═══════════════════ -->
+    <!-- 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?DATA TABLE 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?-->
     <el-card class="table-card surface-card" shadow="never">
       <el-table
         :data="displayList"
@@ -178,7 +178,7 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="dueDate" :label="requirementText.expand.due" width="110">
-                  <template #default="{ row: task }">{{ formatDate(task.dueDate) || '—' }}</template>
+                  <template #default="{ row: task }">{{ formatDate(task.dueDate) || requirementText.detail.noneSymbol }}</template>
                 </el-table-column>
               </el-table>
               <el-empty
@@ -198,7 +198,7 @@
         <el-table-column :label="requirementText.tableHeaders.title" min-width="240" v-if="colVisible('title')">
           <template #default="{ row }">
             <div class="title-cell">
-              <span class="title-text">{{ row.title || '—' }}</span>
+              <span class="title-text">{{ row.title || requirementText.detail.noneSymbol }}</span>
             </div>
           </template>
         </el-table-column>
@@ -214,7 +214,7 @@
         <el-table-column :label="requirementText.tableHeaders.status" width="100" v-if="colVisible('status')">
           <template #default="{ row }">
             <el-tag size="small" round :type="statusTagType(row.status)" effect="plain" class="pill">
-              {{ row.statusLabel || '—' }}
+              {{ row.statusLabel || requirementText.detail.noneSymbol }}
             </el-tag>
           </template>
         </el-table-column>
@@ -223,59 +223,61 @@
           <template #default="{ row }">
             <div class="assignee-cell">
               <el-avatar v-if="row.assigneeName" :size="24" class="avatar">{{ (row.assigneeName || '').charAt(0) }}</el-avatar>
-              <span class="assignee-name">{{ row.assigneeName || '—' }}</span>
+              <span class="assignee-name">{{ row.assigneeName || requirementText.detail.noneSymbol }}</span>
             </div>
           </template>
         </el-table-column>
 
         <el-table-column :label="requirementText.tableHeaders.startDate" width="108" v-if="colVisible('startDate')">
-          <template #default="{ row }">{{ formatDate(row.startDate) || '—' }}</template>
+          <template #default="{ row }">{{ formatDate(row.startDate) || requirementText.detail.noneSymbol }}</template>
         </el-table-column>
 
         <el-table-column :label="requirementText.tableHeaders.dueDate" width="108" v-if="colVisible('dueDate')">
-          <template #default="{ row }">{{ formatDate(row.dueDate) || '—' }}</template>
+          <template #default="{ row }">{{ formatDate(row.dueDate) || requirementText.detail.noneSymbol }}</template>
         </el-table-column>
 
         <el-table-column :label="requirementText.tableHeaders.estimate" width="92" align="center" v-if="colVisible('estimate')">
           <template #default="{ row }">
-            {{ row.estimatedHours != null && row.estimatedHours !== '' ? row.estimatedHours + 'h' : '—' }}
+            {{ row.estimatedHours != null && row.estimatedHours !== '' ? row.estimatedHours + 'h' : requirementText.detail.noneSymbol }}
           </template>
         </el-table-column>
 
         <el-table-column :label="requirementText.tableHeaders.actual" width="92" align="center" v-if="colVisible('actual')">
           <template #default="{ row }">
-            {{ row.actualHours != null && row.actualHours !== '' ? row.actualHours + 'h' : '—' }}
+            {{ row.actualHours != null && row.actualHours !== '' ? row.actualHours + 'h' : requirementText.detail.noneSymbol }}
           </template>
         </el-table-column>
 
         <el-table-column :label="requirementText.tableHeaders.taskCount" width="80" align="center" v-if="colVisible('taskCount')">
           <template #default="{ row }">
-            <el-tag size="small" type="info" round>{{ taskCountMap[row.id] ?? '—' }}</el-tag>
+            <el-tag size="small" type="info" round>{{ taskCountMap[row.id] ?? requirementText.detail.noneSymbol }}</el-tag>
           </template>
         </el-table-column>
 
         <el-table-column :label="requirementText.tableHeaders.actions" width="260" fixed="right" align="right">
           <template #default="{ row }">
-            <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openDetail(row)">
-              {{ requirementText.buttons.view }}
-            </el-button>
-            <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openEdit(row)">
-              {{ requirementText.buttons.edit }}
-            </el-button>
-            <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openTaskCreate(row)">
-              {{ requirementText.buttons.decompose }}
-            </el-button>
-            <el-dropdown v-if="canEditRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
-              <el-button size="small" link type="primary" class="action-status-btn">{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="opt in nextStatusOptions(row)" :key="opt.command" :command="opt.command">
-                    {{ opt.label }}
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <span v-if="!canViewRequirement(row)" class="readonly-hint">—</span>
+            <div class="action-cell">
+              <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openDetail(row)">
+                {{ requirementText.buttons.view }}
+              </el-button>
+              <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openEdit(row)">
+                {{ requirementText.buttons.edit }}
+              </el-button>
+              <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openTaskCreate(row)">
+                {{ requirementText.buttons.decompose }}
+              </el-button>
+              <el-dropdown v-if="canEditRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
+                <el-button size="small" link type="primary" class="action-status-btn">{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="opt in nextStatusOptions(row)" :key="opt.command" :command="opt.command">
+                      {{ opt.label }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <span v-if="!canViewRequirement(row)" class="readonly-hint">{{ requirementText.detail.noneSymbol }}</span>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -513,7 +515,7 @@
     </el-dialog>
 
     <!-- Decompose Task Dialog -->
-    <el-dialog v-model="showTaskCreate" :title="`${requirementText.dialogs.decomposeTaskPrefix} · ${currentReq?.title || ''}`" width="560px" destroy-on-close>
+    <el-dialog v-model="showTaskCreate" :title="`${requirementText.dialogs.decomposeTaskPrefix} / ${currentReq?.title || ''}`" width="560px" destroy-on-close>
       <el-form :model="taskForm" label-width="100px">
         <el-form-item :label="requirementText.formLabels.belongsRequirement">
           <el-input :model-value="currentReq?.title" disabled />
@@ -774,7 +776,7 @@ const statusTagMap: Record<string, TagType> = {
 }
 const taskStatusTypeMap: Record<string, TagType> = { TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success', CLOSED: 'info' }
 
-function priorityLabel(p: string) { return priorityMap[p] || p || '—' }
+function priorityLabel(p: string) { return priorityMap[p] || p || requirementText.detail.noneSymbol }
 function priorityType(p: string): TagType { return priorityTypeMap[p] || 'info' }
 function statusTagType(s: string): TagType { return statusTagMap[s] || 'info' }
 function taskStatusType(s: string): TagType { return taskStatusTypeMap[s] || 'info' }
@@ -852,7 +854,7 @@ function formatDateTime(d: string | null | undefined): string {
 }
 
 function formatFileSize(bytes: number | null | undefined): string {
-  if (bytes == null || bytes === 0) return '—'
+  if (bytes == null || bytes === 0) return requirementText.detail.noneSymbol
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
@@ -1559,6 +1561,14 @@ onMounted(() => {
 .readonly-hint {
   font-size: 12px;
   color: var(--app-text-muted);
+}
+
+.action-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  white-space: nowrap;
 }
 
 .action-status-btn :deep(.el-icon) {
