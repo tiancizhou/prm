@@ -485,6 +485,9 @@
         </div>
       </div>
       <template #footer>
+        <el-button v-if="canManageProject && detailReq" type="primary" plain @click="openTaskTemplateDialog(detailReq)">
+          {{ taskTemplateText.applyButton }}
+        </el-button>
         <el-button @click="showDetail = false">{{ requirementText.buttons.close }}</el-button>
       </template>
     </el-dialog>
@@ -571,6 +574,68 @@
         <el-button type="primary" :loading="creatingTask" @click="createTask">{{ requirementText.buttons.createTask }}</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="showTaskTemplateDialog"
+      :title="`${taskTemplateText.dialogTitle} / ${currentReq?.title || ''}`"
+      width="860px"
+      destroy-on-close
+    >
+      <div class="template-toolbar">
+        <el-select v-model="taskTemplateKey" class="template-select" @change="applySelectedTaskTemplate">
+          <el-option
+            v-for="template in taskTemplateOptions"
+            :key="template.value"
+            :label="template.label"
+            :value="template.value"
+          />
+        </el-select>
+        <el-button type="primary" plain @click="addTaskTemplateRow">{{ taskTemplateText.addRow }}</el-button>
+      </div>
+      <div class="form-tip">{{ taskTemplateText.hint }}</div>
+
+      <el-table :data="taskTemplateRows" size="small" class="template-table" max-height="360">
+        <el-table-column :label="taskTemplateText.columns.title" min-width="240">
+          <template #default="{ row }">
+            <el-input v-model="row.title" :placeholder="requirementText.placeholders.taskTitle" maxlength="120" />
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskTemplateText.columns.type" width="110">
+          <template #default="{ row }">
+            <el-select v-model="row.type">
+              <el-option v-for="opt in taskTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskTemplateText.columns.priority" width="110">
+          <template #default="{ row }">
+            <el-select v-model="row.priority">
+              <el-option v-for="opt in taskPriorityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskTemplateText.columns.estimatedHours" width="120">
+          <template #default="{ row }">
+            <el-input-number v-model="row.estimatedHours" :min="0" :precision="1" :step="0.5" controls-position="right" />
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskTemplateText.columns.dueDate" width="150">
+          <template #default="{ row }">
+            <el-date-picker v-model="row.dueDate" type="date" value-format="YYYY-MM-DD" class="full-width-control" />
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskTemplateText.columns.actions" width="80" align="center">
+          <template #default="{ $index }">
+            <el-button type="danger" link @click="removeTaskTemplateRow($index)">{{ requirementText.buttons.delete }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <template #footer>
+        <el-button @click="showTaskTemplateDialog = false">{{ requirementText.buttons.cancel }}</el-button>
+        <el-button type="primary" :loading="taskTemplateSubmitting" @click="submitTaskTemplate">{{ taskTemplateText.submitButton }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -641,6 +706,60 @@ const doneScreenshotText = currentLocale === 'zh-CN'
       screenshotsHint: 'Multiple images are supported and optional',
       screenshotTypeInvalid: 'Only image files are allowed',
       screenshotUploadPartialFailed: 'Some screenshots failed to upload, please retry later'
+    }
+
+const taskTemplateText = currentLocale === 'zh-CN'
+  ? {
+      applyButton: '套用任务模板',
+      dialogTitle: '任务模板',
+      addRow: '新增一行',
+      submitButton: '批量创建任务',
+      hint: '可手动调整每条任务后再提交，至少保留 1 条有效任务。',
+      columns: {
+        title: '任务标题',
+        type: '类型',
+        priority: '优先级',
+        estimatedHours: '预估工时',
+        dueDate: '截止日期',
+        actions: '操作'
+      },
+      templates: {
+        feature: '功能开发模板',
+        bugfix: '缺陷修复模板'
+      },
+      messages: {
+        titleRequired: '请至少填写 1 条任务标题',
+        estimatedInvalid: '预估工时不能小于 0',
+        createSuccess: '模板任务创建成功',
+        createPartialFailed: '部分任务创建失败，请检查后重试',
+        createFailed: '模板任务创建失败'
+      }
+    }
+  : {
+      applyButton: 'Apply Task Template',
+      dialogTitle: 'Task Template',
+      addRow: 'Add Row',
+      submitButton: 'Create Tasks in Batch',
+      hint: 'You can adjust each task before submit. Keep at least one valid row.',
+      columns: {
+        title: 'Task Title',
+        type: 'Type',
+        priority: 'Priority',
+        estimatedHours: 'Est. Hours',
+        dueDate: 'Due Date',
+        actions: 'Actions'
+      },
+      templates: {
+        feature: 'Feature Development',
+        bugfix: 'Bugfix Handling'
+      },
+      messages: {
+        titleRequired: 'Please keep at least one task title',
+        estimatedInvalid: 'Estimated hours must be greater than or equal to 0',
+        createSuccess: 'Template tasks created successfully',
+        createPartialFailed: 'Some tasks failed to create, please retry',
+        createFailed: 'Failed to create template tasks'
+      }
     }
 
 const canManageProject = computed(() => {
@@ -1009,6 +1128,39 @@ const creatingTask = ref(false)
 const currentReq = ref<any>(null)
 const taskForm = reactive({ title: '', type: 'TASK', priority: 'MEDIUM', estimatedHours: 0, dueDate: '' })
 
+type TaskTemplateKey = 'feature' | 'bugfix'
+
+type TaskTemplateRow = {
+  title: string
+  type: 'TASK' | 'SUBTASK' | 'TECH'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  estimatedHours: number
+  dueDate: string
+}
+
+const showTaskTemplateDialog = ref(false)
+const taskTemplateSubmitting = ref(false)
+const taskTemplateKey = ref<TaskTemplateKey>('feature')
+const taskTemplateRows = ref<TaskTemplateRow[]>([])
+
+const taskTemplateOptions: Array<{ value: TaskTemplateKey; label: string }> = [
+  { value: 'feature', label: taskTemplateText.templates.feature },
+  { value: 'bugfix', label: taskTemplateText.templates.bugfix }
+]
+
+const taskTemplatePresets: Record<TaskTemplateKey, TaskTemplateRow[]> = {
+  feature: [
+    { title: currentLocale === 'zh-CN' ? '需求澄清与边界确认' : 'Clarify requirement scope', type: 'TASK', priority: 'MEDIUM', estimatedHours: 1, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '核心开发实现' : 'Core implementation', type: 'TASK', priority: 'HIGH', estimatedHours: 4, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '联调与自测' : 'Integration and self-test', type: 'TASK', priority: 'MEDIUM', estimatedHours: 2, dueDate: '' }
+  ],
+  bugfix: [
+    { title: currentLocale === 'zh-CN' ? '复现与根因定位' : 'Reproduce and root-cause analysis', type: 'TASK', priority: 'HIGH', estimatedHours: 1, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '修复与回归验证' : 'Fix and regression verification', type: 'TASK', priority: 'HIGH', estimatedHours: 2, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '发布说明与同步' : 'Release note and sync', type: 'SUBTASK', priority: 'MEDIUM', estimatedHours: 0.5, dueDate: '' }
+  ]
+}
+
 const showDoneStatusDialog = ref(false)
 const doneStatusSubmitting = ref(false)
 const doneStatusTarget = ref<any>(null)
@@ -1201,6 +1353,97 @@ function openTaskCreate(req: any) {
   taskForm.estimatedHours = 0
   taskForm.dueDate = ''
   showTaskCreate.value = true
+}
+
+function cloneTaskTemplateRows(rows: TaskTemplateRow[]): TaskTemplateRow[] {
+  return rows.map(row => ({ ...row }))
+}
+
+function applySelectedTaskTemplate() {
+  taskTemplateRows.value = cloneTaskTemplateRows(taskTemplatePresets[taskTemplateKey.value] ?? [])
+}
+
+function addTaskTemplateRow() {
+  taskTemplateRows.value.push({
+    title: '',
+    type: 'TASK',
+    priority: 'MEDIUM',
+    estimatedHours: 0,
+    dueDate: ''
+  })
+}
+
+function removeTaskTemplateRow(index: number) {
+  taskTemplateRows.value.splice(index, 1)
+}
+
+function openTaskTemplateDialog(req: any) {
+  if (!canManageProject.value) {
+    ElMessage.warning(requirementText.messages.noManagePermission)
+    return
+  }
+  currentReq.value = req
+  taskTemplateKey.value = 'feature'
+  applySelectedTaskTemplate()
+  showTaskTemplateDialog.value = true
+}
+
+async function submitTaskTemplate() {
+  if (!currentReq.value?.id) {
+    return
+  }
+
+  const validRows = taskTemplateRows.value
+    .map(row => ({
+      ...row,
+      title: row.title.trim(),
+      estimatedHours: Number.isFinite(Number(row.estimatedHours)) ? Number(row.estimatedHours) : 0
+    }))
+    .filter(row => row.title)
+
+  if (!validRows.length) {
+    ElMessage.warning(taskTemplateText.messages.titleRequired)
+    return
+  }
+
+  if (validRows.some(row => row.estimatedHours < 0)) {
+    ElMessage.warning(taskTemplateText.messages.estimatedInvalid)
+    return
+  }
+
+  taskTemplateSubmitting.value = true
+  try {
+    const results = await Promise.allSettled(validRows.map(row => taskApi.create({
+      projectId,
+      requirementId: currentReq.value.id,
+      title: row.title,
+      type: row.type,
+      priority: row.priority,
+      estimatedHours: row.estimatedHours,
+      dueDate: row.dueDate || undefined,
+      assigneeId: currentReq.value.assigneeId ?? undefined
+    })))
+
+    const successCount = results.filter(result => result.status === 'fulfilled').length
+    const failedCount = results.length - successCount
+
+    if (failedCount === 0) {
+      ElMessage.success(taskTemplateText.messages.createSuccess)
+      showTaskTemplateDialog.value = false
+    } else if (successCount > 0) {
+      ElMessage.warning(`${taskTemplateText.messages.createPartialFailed} (${successCount}/${results.length})`)
+    } else {
+      ElMessage.error(taskTemplateText.messages.createFailed)
+    }
+
+    if (currentReq.value?.id) {
+      loadTasks(currentReq.value.id)
+      loadTaskCount(currentReq.value.id)
+    }
+    await load()
+  } finally {
+    taskTemplateSubmitting.value = false
+  }
 }
 
 async function create() {
@@ -1699,6 +1942,23 @@ onMounted(() => {
 
 .action-status-btn :deep(.el-icon) {
   margin-left: 2px;
+}
+
+.template-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.template-select {
+  width: 240px;
+  max-width: 100%;
+}
+
+.template-table {
+  margin-top: var(--space-sm);
 }
 
 .pagination-wrap {
