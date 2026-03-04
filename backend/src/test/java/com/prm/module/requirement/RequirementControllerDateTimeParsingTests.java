@@ -90,6 +90,29 @@ class RequirementControllerDateTimeParsingTests {
     }
 
     @Test
+    void updateStatusShouldParseOffsetDateTime() throws Exception {
+        Long requirementId = 9004L;
+        LocalDateTime start = LocalDateTime.of(2026, 3, 4, 9, 15);
+        LocalDateTime end = LocalDateTime.of(2026, 3, 4, 11, 45);
+
+        RequirementDTO dto = new RequirementDTO();
+        dto.setId(requirementId);
+        dto.setStatus("DONE");
+        when(requirementService.updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end))).thenReturn(dto);
+
+        mockMvc.perform(put("/api/requirements/{id}/status", requirementId)
+                        .param("status", "DONE")
+                        .param("actualStartAt", "2026-03-04T09:15:00+08:00")
+                        .param("actualEndAt", "2026-03-04T11:45:00+08:00")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(9004));
+
+        verify(requirementService).updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end));
+    }
+
+    @Test
     void updateStatusShouldRejectInvalidDateTimeFormat() throws Exception {
         mockMvc.perform(put("/api/requirements/{id}/status", 9003L)
                         .param("status", "DONE")
