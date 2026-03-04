@@ -140,6 +140,7 @@
     <!-- 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?DATA TABLE 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?-->
     <el-card class="table-card surface-card" shadow="never">
       <el-table
+        ref="requirementTableRef"
         :data="displayList"
         v-loading="loading"
         row-key="id"
@@ -254,7 +255,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column :label="requirementText.tableHeaders.actions" width="260" fixed="right" align="right">
+        <el-table-column :label="requirementText.tableHeaders.actions" min-width="180" align="right">
           <template #default="{ row }">
             <div class="action-cell">
               <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openDetail(row)">
@@ -549,7 +550,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { Plus, Search, List, Grid, Calendar, MoreFilled, Filter, Setting, ArrowDown, UploadFilled, Document } from '@element-plus/icons-vue'
 import { requirementApi } from '@/api/requirement'
@@ -701,11 +702,17 @@ const columnOptions = [
   ...requirementText.columnOptions
 ]
 
-const visibleColumns = ref<string[]>(['id', 'title', 'priority', 'status', 'assignee', 'dueDate', 'estimate', 'actual', 'taskCount'])
+const visibleColumns = ref<string[]>(['title', 'priority', 'status', 'assignee', 'dueDate', 'estimate', 'actual', 'taskCount'])
+const requirementTableRef = ref<any>(null)
 
 function colVisible(key: string) {
   return visibleColumns.value.includes(key)
 }
+
+watch(visibleColumns, async () => {
+  await nextTick()
+  requirementTableRef.value?.doLayout?.()
+}, { deep: true })
 
 // Data
 const loading = ref(false)
