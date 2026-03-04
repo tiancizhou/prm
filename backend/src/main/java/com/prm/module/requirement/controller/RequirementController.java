@@ -2,6 +2,7 @@ package com.prm.module.requirement.controller;
 
 import com.prm.common.result.PageResult;
 import com.prm.common.result.R;
+import com.prm.common.exception.BizException;
 import com.prm.module.requirement.application.RequirementService;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
@@ -15,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.List;
 
 @Tag(name = "需求管理")
 @RestController
@@ -23,6 +28,12 @@ import java.time.LocalDateTime;
 public class RequirementController {
 
     private final RequirementService requirementService;
+    private static final List<DateTimeFormatter> FLEXIBLE_DATE_TIME_FORMATTERS = List.of(
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME,
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    );
 
     @Operation(summary = "需求分页列表")
     @GetMapping
@@ -64,9 +75,38 @@ public class RequirementController {
     @PutMapping("/{id}/status")
     public R<RequirementDTO> updateStatus(@PathVariable Long id,
                                           @RequestParam String status,
-                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime actualStartAt,
-                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime actualEndAt) {
-        return R.ok(requirementService.updateStatus(id, status, actualStartAt, actualEndAt));
+                                          @RequestParam(required = false) String actualStartAt,
+                                          @RequestParam(required = false) String actualEndAt) {
+        LocalDateTime resolvedActualStartAt = parseDateTimeParameter(actualStartAt, "actualStartAt");
+        LocalDateTime resolvedActualEndAt = parseDateTimeParameter(actualEndAt, "actualEndAt");
+
+        return R.ok(requirementService.updateStatus(id, status, resolvedActualStartAt, resolvedActualEndAt));
+    }
+
+    private LocalDateTime parseDateTimeParameter(String text, String fieldName) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        String value = text.trim();
+        try {
+            return LocalDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            return OffsetDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+        }
+
+        for (DateTimeFormatter formatter : FLEXIBLE_DATE_TIME_FORMATTERS) {
+            try {
+                return LocalDateTime.parse(value, formatter);
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+
+        throw BizException.of(fieldName + " 时间格式不正确，请使用 yyyy-MM-ddTHH:mm:ss");
     }
 
     @Operation(summary = "添加需求评审记录")

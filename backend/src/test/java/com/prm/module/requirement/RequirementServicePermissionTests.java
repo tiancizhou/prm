@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -167,6 +168,13 @@ class RequirementServicePermissionTests {
                     LocalDateTime.of(2026, 3, 2, 11, 45));
 
             assertThat(dto.getActualHours()).isEqualByComparingTo("2.50");
+
+            ArgumentCaptor<Requirement> captor = ArgumentCaptor.forClass(Requirement.class);
+            verify(requirementMapper).updateById(captor.capture());
+            Requirement persisted = captor.getValue();
+            assertThat(persisted.getActualStartAt()).isEqualTo(LocalDateTime.of(2026, 3, 2, 9, 15));
+            assertThat(persisted.getActualEndAt()).isEqualTo(LocalDateTime.of(2026, 3, 2, 11, 45));
+            assertThat(persisted.getActualHours()).isEqualByComparingTo("2.50");
         }
     }
 
