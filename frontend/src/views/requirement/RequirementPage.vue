@@ -267,6 +267,9 @@
               <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openTaskCreate(row)">
                 {{ requirementText.buttons.decompose }}
               </el-button>
+              <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openTaskTemplateDialog(row)">
+                {{ taskTemplateText.applyButton }}
+              </el-button>
               <el-dropdown v-if="canEditRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
                 <el-button size="small" link type="primary" class="action-status-btn">{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
                 <template #dropdown>
@@ -456,6 +459,11 @@
             <el-tag size="small" round :type="statusTagType(detailReq.status)">{{ detailReq.statusLabel }}</el-tag>
             <el-tag size="small" round :type="priorityType(detailReq.priority)" effect="plain">{{ priorityLabel(detailReq.priority) }}</el-tag>
           </div>
+          <div v-if="canManageProject" class="detail-actions">
+            <el-button type="primary" plain size="small" @click="openTaskTemplateDialog(detailReq)">
+              {{ taskTemplateText.applyButton }}
+            </el-button>
+          </div>
         </div>
         <el-descriptions :column="2" border size="small" class="detail-desc">
           <el-descriptions-item :label="requirementText.formLabels.owner">{{ detailReq.assigneeName || requirementText.detail.noneSymbol }}</el-descriptions-item>
@@ -562,6 +570,11 @@
             <el-option v-for="opt in taskPriorityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
+        <el-form-item :label="requirementText.formLabels.owner">
+          <el-select v-model="taskForm.assigneeId" clearable filterable :placeholder="requirementText.placeholders.assignee" class="full-width-control">
+            <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="requirementText.formLabels.estimatedHours">
           <el-input-number v-model="taskForm.estimatedHours" :min="0" :precision="1" />
         </el-form-item>
@@ -578,7 +591,7 @@
     <el-dialog
       v-model="showTaskTemplateDialog"
       :title="`${taskTemplateText.dialogTitle} / ${currentReq?.title || ''}`"
-      width="860px"
+      width="980px"
       destroy-on-close
     >
       <div class="template-toolbar">
@@ -611,6 +624,13 @@
           <template #default="{ row }">
             <el-select v-model="row.priority">
               <el-option v-for="opt in taskPriorityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column :label="taskTemplateText.columns.assignee" width="150">
+          <template #default="{ row }">
+            <el-select v-model="row.assigneeId" clearable filterable :placeholder="requirementText.placeholders.assignee" class="full-width-control">
+              <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
             </el-select>
           </template>
         </el-table-column>
@@ -719,6 +739,7 @@ const taskTemplateText = currentLocale === 'zh-CN'
         title: '任务标题',
         type: '类型',
         priority: '优先级',
+        assignee: '负责人',
         estimatedHours: '预估工时',
         dueDate: '截止日期',
         actions: '操作'
@@ -745,6 +766,7 @@ const taskTemplateText = currentLocale === 'zh-CN'
         title: 'Task Title',
         type: 'Type',
         priority: 'Priority',
+        assignee: 'Assignee',
         estimatedHours: 'Est. Hours',
         dueDate: 'Due Date',
         actions: 'Actions'
@@ -1126,7 +1148,7 @@ const formRules = { title: [{ required: true, message: requirementText.messages.
 const showTaskCreate = ref(false)
 const creatingTask = ref(false)
 const currentReq = ref<any>(null)
-const taskForm = reactive({ title: '', type: 'TASK', priority: 'MEDIUM', estimatedHours: 0, dueDate: '' })
+const taskForm = reactive({ title: '', type: 'TASK', priority: 'MEDIUM', assigneeId: null as number | null, estimatedHours: 0, dueDate: '' })
 
 type TaskTemplateKey = 'feature' | 'bugfix'
 
@@ -1134,6 +1156,7 @@ type TaskTemplateRow = {
   title: string
   type: 'TASK' | 'SUBTASK' | 'TECH'
   priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  assigneeId: number | null
   estimatedHours: number
   dueDate: string
 }
@@ -1150,14 +1173,14 @@ const taskTemplateOptions: Array<{ value: TaskTemplateKey; label: string }> = [
 
 const taskTemplatePresets: Record<TaskTemplateKey, TaskTemplateRow[]> = {
   feature: [
-    { title: currentLocale === 'zh-CN' ? '需求澄清与边界确认' : 'Clarify requirement scope', type: 'TASK', priority: 'MEDIUM', estimatedHours: 1, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '核心开发实现' : 'Core implementation', type: 'TASK', priority: 'HIGH', estimatedHours: 4, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '联调与自测' : 'Integration and self-test', type: 'TASK', priority: 'MEDIUM', estimatedHours: 2, dueDate: '' }
+    { title: currentLocale === 'zh-CN' ? '需求澄清与边界确认' : 'Clarify requirement scope', type: 'TASK', priority: 'MEDIUM', assigneeId: null, estimatedHours: 1, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '核心开发实现' : 'Core implementation', type: 'TASK', priority: 'HIGH', assigneeId: null, estimatedHours: 4, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '联调与自测' : 'Integration and self-test', type: 'TASK', priority: 'MEDIUM', assigneeId: null, estimatedHours: 2, dueDate: '' }
   ],
   bugfix: [
-    { title: currentLocale === 'zh-CN' ? '复现与根因定位' : 'Reproduce and root-cause analysis', type: 'TASK', priority: 'HIGH', estimatedHours: 1, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '修复与回归验证' : 'Fix and regression verification', type: 'TASK', priority: 'HIGH', estimatedHours: 2, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '发布说明与同步' : 'Release note and sync', type: 'SUBTASK', priority: 'MEDIUM', estimatedHours: 0.5, dueDate: '' }
+    { title: currentLocale === 'zh-CN' ? '复现与根因定位' : 'Reproduce and root-cause analysis', type: 'TASK', priority: 'HIGH', assigneeId: null, estimatedHours: 1, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '修复与回归验证' : 'Fix and regression verification', type: 'TASK', priority: 'HIGH', assigneeId: null, estimatedHours: 2, dueDate: '' },
+    { title: currentLocale === 'zh-CN' ? '发布说明与同步' : 'Release note and sync', type: 'SUBTASK', priority: 'MEDIUM', assigneeId: null, estimatedHours: 0.5, dueDate: '' }
   ]
 }
 
@@ -1350,6 +1373,7 @@ function openTaskCreate(req: any) {
   taskForm.title = ''
   taskForm.type = 'TASK'
   taskForm.priority = 'MEDIUM'
+  taskForm.assigneeId = req?.assigneeId ?? null
   taskForm.estimatedHours = 0
   taskForm.dueDate = ''
   showTaskCreate.value = true
@@ -1360,7 +1384,11 @@ function cloneTaskTemplateRows(rows: TaskTemplateRow[]): TaskTemplateRow[] {
 }
 
 function applySelectedTaskTemplate() {
-  taskTemplateRows.value = cloneTaskTemplateRows(taskTemplatePresets[taskTemplateKey.value] ?? [])
+  const defaultAssigneeId = currentReq.value?.assigneeId ?? null
+  taskTemplateRows.value = cloneTaskTemplateRows(taskTemplatePresets[taskTemplateKey.value] ?? []).map(row => ({
+    ...row,
+    assigneeId: defaultAssigneeId
+  }))
 }
 
 function addTaskTemplateRow() {
@@ -1368,6 +1396,7 @@ function addTaskTemplateRow() {
     title: '',
     type: 'TASK',
     priority: 'MEDIUM',
+    assigneeId: currentReq.value?.assigneeId ?? null,
     estimatedHours: 0,
     dueDate: ''
   })
@@ -1413,25 +1442,31 @@ async function submitTaskTemplate() {
 
   taskTemplateSubmitting.value = true
   try {
-    const results = await Promise.allSettled(validRows.map(row => taskApi.create({
-      projectId,
-      requirementId: currentReq.value.id,
-      title: row.title,
-      type: row.type,
-      priority: row.priority,
-      estimatedHours: row.estimatedHours,
-      dueDate: row.dueDate || undefined,
-      assigneeId: currentReq.value.assigneeId ?? undefined
-    })))
-
-    const successCount = results.filter(result => result.status === 'fulfilled').length
-    const failedCount = results.length - successCount
+    let successCount = 0
+    let failedCount = 0
+    for (const row of validRows) {
+      try {
+        await taskApi.create({
+          projectId,
+          requirementId: currentReq.value.id,
+          title: row.title,
+          type: row.type,
+          priority: row.priority,
+          estimatedHours: row.estimatedHours,
+          dueDate: row.dueDate || undefined,
+          assigneeId: row.assigneeId ?? undefined
+        })
+        successCount += 1
+      } catch {
+        failedCount += 1
+      }
+    }
 
     if (failedCount === 0) {
       ElMessage.success(taskTemplateText.messages.createSuccess)
       showTaskTemplateDialog.value = false
     } else if (successCount > 0) {
-      ElMessage.warning(`${taskTemplateText.messages.createPartialFailed} (${successCount}/${results.length})`)
+      ElMessage.warning(`${taskTemplateText.messages.createPartialFailed} (${successCount}/${validRows.length})`)
     } else {
       ElMessage.error(taskTemplateText.messages.createFailed)
     }
@@ -1478,7 +1513,7 @@ async function createTask() {
   }
   creatingTask.value = true
   try {
-    await taskApi.create({ ...taskForm, projectId, requirementId: currentReq.value?.id })
+    await taskApi.create({ ...taskForm, projectId, requirementId: currentReq.value?.id, assigneeId: taskForm.assigneeId ?? undefined })
     ElMessage.success(requirementText.messages.taskCreated)
     showTaskCreate.value = false
     if (currentReq.value?.id) {
@@ -1806,6 +1841,12 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-sm);
   margin-bottom: var(--space-md);
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--space-sm);
 }
 
 .detail-type {
