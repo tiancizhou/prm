@@ -23,6 +23,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,62 +38,60 @@ public class ProjectService {
     private final SysUserMapper userMapper;
     private final SysRoleMapper roleMapper;
 
-    // ─── 权限辅助 ─────────────────────────────────────────────
-
-    /** 当前用户是否是超级管理员 */
     private boolean isSuperAdmin() {
         return SecurityUtil.isSuperAdmin();
     }
 
-    /** 当前用户是否是项目经理（系统角色） */
-    private boolean isProjectAdmin() {
+    private boolean hasProjectAdminRole() {
         return SecurityUtil.hasRole("PROJECT_ADMIN");
     }
 
-    /** 当前用户是否是指定项目的成员 */
-    private boolean isMemberOf(Long projectId) {
-        Long userId = SecurityUtil.getCurrentUserId();
-        return memberMapper.selectCount(new LambdaQueryWrapper<ProjectMember>()
+    private ProjectMember findMyMembership(Long projectId) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        return memberMapper.selectOne(new LambdaQueryWrapper<ProjectMember>()
                 .eq(ProjectMember::getProjectId, projectId)
-                .eq(ProjectMember::getUserId, userId)) > 0;
+                .eq(ProjectMember::getUserId, currentUserId));
     }
 
-    /**
-     * 检查当前用户是否有项目编辑权限：
-     *   - SUPER_ADMIN：可编辑所有项目
-     *   - PROJECT_ADMIN：仅可编辑自己是成员的项目
-     *   - 其他：无编辑权
-     */
+    private boolean isProjectManagerOf(Long projectId) {
+        ProjectMember membership = findMyMembership(projectId);
+        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
+    }
+
     private void requireEditPermission(Long projectId) {
-        if (isSuperAdmin()) return;
-        if (isProjectAdmin() && isMemberOf(projectId)) return;
+        if (isSuperAdmin() || isProjectManagerOf(projectId)) {
+            return;
+        }
         throw BizException.forbidden("无项目编辑权限");
     }
 
-    /**
-     * 检查当前用户是否有创建项目的权限：
-     *   - SUPER_ADMIN 或 PROJECT_ADMIN 可创建
-     */
     private void requireCreatePermission() {
-        if (isSuperAdmin() || isProjectAdmin()) return;
+        if (isSuperAdmin() || hasProjectAdminRole()) {
+            return;
+        }
         throw BizException.forbidden("只有项目经理或超级管理员才能创建项目");
     }
-
-    // ─── 项目列表 ──────────────────────────────────────────────
 
     public IPage<ProjectDTO> page(int pageNum, int pageSize, String keyword, String status) {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         boolean isAdmin = isSuperAdmin();
 
-        // 非超管：只能看自己所在项目
         Set<Long> myProjectIds = null;
+        Set<Long> managerProjectIds = null;
         if (!isAdmin) {
-            myProjectIds = memberMapper.selectList(
+            List<ProjectMember> memberships = memberMapper.selectList(
                     new LambdaQueryWrapper<ProjectMember>()
-                            .eq(ProjectMember::getUserId, currentUserId))
-                    .stream().map(ProjectMember::getProjectId).collect(Collectors.toSet());
+                            .eq(ProjectMember::getUserId, currentUserId));
+            myProjectIds = memberships.stream()
+                    .map(ProjectMember::getProjectId)
+                    .collect(Collectors.toCollection(HashSet::new));
+            managerProjectIds = memberships.stream()
+                    .filter(member -> "PROJECT_ADMIN".equalsIgnoreCase(member.getRole()))
+                    .map(ProjectMember::getProjectId)
+                    .collect(Collectors.toCollection(HashSet::new));
+
             if (myProjectIds.isEmpty()) {
-                return new Page<ProjectDTO>(pageNum, pageSize).convert(p -> null);
+                return new Page<ProjectDTO>(pageNum, pageSize).convert(item -> null);
             }
         }
 
@@ -104,7 +103,10 @@ public class ProjectService {
             wrapper.in(Project::getId, myProjectIds);
         }
         if (StringUtils.hasText(keyword)) {
-            wrapper.and(w -> w.like(Project::getName, keyword).or().like(Project::getCode, keyword));
+            wrapper.and(condition -> condition
+                    .like(Project::getName, keyword)
+                    .or()
+                    .like(Project::getCode, keyword));
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(Project::getStatus, status);
@@ -112,28 +114,23 @@ public class ProjectService {
 
         IPage<Project> projectPage = projectMapper.selectPage(pageReq, wrapper);
         List<Long> ownerIds = projectPage.getRecords().stream()
-                .map(Project::getOwnerId).distinct().collect(Collectors.toList());
-        Map<Long, SysUser> userMap = ownerIds.isEmpty() ? Map.of() :
-                userMapper.selectBatchIds(ownerIds).stream()
-                        .collect(Collectors.toMap(SysUser::getId, u -> u));
+                .map(Project::getOwnerId)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, SysUser> userMap = ownerIds.isEmpty()
+                ? Map.of()
+                : userMapper.selectBatchIds(ownerIds).stream()
+                .collect(Collectors.toMap(SysUser::getId, user -> user));
 
-        Set<Long> editableIds = null;
-        if (!isAdmin) {
-            // 项目经理：自己所在的项目可编辑；其他角色：无编辑权
-            if (isProjectAdmin()) {
-                editableIds = myProjectIds;
-            }
-        }
-        final Set<Long> finalEditableIds = editableIds;
+        Set<Long> editableIds = isAdmin ? null : managerProjectIds;
         final boolean finalIsAdmin = isAdmin;
-
-        return projectPage.convert(p -> {
-            boolean canEdit = finalIsAdmin || (finalEditableIds != null && finalEditableIds.contains(p.getId()));
-            return toDTO(p, userMap.get(p.getOwnerId()), canEdit);
+        final Set<Long> finalEditableIds = editableIds;
+        return projectPage.convert(project -> {
+            boolean canEdit = finalIsAdmin
+                    || (finalEditableIds != null && finalEditableIds.contains(project.getId()));
+            return toDTO(project, userMap.get(project.getOwnerId()), canEdit);
         });
     }
-
-    // ─── CRUD ─────────────────────────────────────────────────
 
     @Transactional
     public ProjectDTO create(CreateProjectRequest request) {
@@ -141,7 +138,9 @@ public class ProjectService {
 
         long count = projectMapper.selectCount(
                 new LambdaQueryWrapper<Project>().eq(Project::getCode, request.getCode()));
-        if (count > 0) throw BizException.of("项目代号已存在");
+        if (count > 0) {
+            throw BizException.of("项目代号已存在");
+        }
 
         Long currentUserId = SecurityUtil.getCurrentUserId();
         Project project = new Project();
@@ -171,8 +170,10 @@ public class ProjectService {
 
     public ProjectDTO getById(Long id) {
         Project project = projectMapper.selectById(id);
-        if (project == null || project.getDeleted() == 1) throw BizException.notFound("项目");
-        boolean canEdit = isSuperAdmin() || (isProjectAdmin() && isMemberOf(id));
+        if (project == null || project.getDeleted() == 1) {
+            throw BizException.notFound("项目");
+        }
+        boolean canEdit = isSuperAdmin() || isProjectManagerOf(id);
         SysUser owner = userMapper.selectById(project.getOwnerId());
         return toDTO(project, owner, canEdit);
     }
@@ -181,7 +182,9 @@ public class ProjectService {
     public ProjectDTO update(Long id, CreateProjectRequest request) {
         requireEditPermission(id);
         Project project = projectMapper.selectById(id);
-        if (project == null || project.getDeleted() == 1) throw BizException.notFound("项目");
+        if (project == null || project.getDeleted() == 1) {
+            throw BizException.notFound("项目");
+        }
         Long currentUserId = SecurityUtil.getCurrentUserId();
         project.setName(request.getName());
         project.setDescription(request.getDescription());
@@ -208,43 +211,47 @@ public class ProjectService {
 
     private void updateStatus(Long id, String status) {
         Project project = projectMapper.selectById(id);
-        if (project == null) throw BizException.notFound("项目");
+        if (project == null) {
+            throw BizException.notFound("项目");
+        }
         project.setStatus(status);
         project.setUpdatedBy(SecurityUtil.getCurrentUserId());
         projectMapper.updateById(project);
     }
-
-    // ─── 成员管理 ──────────────────────────────────────────────
 
     public List<ProjectMember> getMembers(Long projectId) {
         return memberMapper.selectList(
                 new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, projectId));
     }
 
-    /** 项目成员列表（含用户姓名、工号、系统角色名），用于指派下拉和成员页展示 */
     public List<ProjectMemberVO> getMemberVOs(Long projectId) {
         List<ProjectMember> members = memberMapper.selectList(
                 new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, projectId));
-        if (members.isEmpty()) return List.of();
+        if (members.isEmpty()) {
+            return List.of();
+        }
 
         List<Long> userIds = members.stream().map(ProjectMember::getUserId).distinct().toList();
         Map<Long, SysUser> userMap = userMapper.selectBatchIds(userIds).stream()
-                .collect(Collectors.toMap(SysUser::getId, u -> u));
+                .collect(Collectors.toMap(SysUser::getId, user -> user));
 
         Map<String, String> sysRoleNameMap = roleMapper.selectList(
-                new LambdaQueryWrapper<SysRole>().eq(SysRole::getDeleted, 0))
-                .stream().collect(Collectors.toMap(SysRole::getCode, SysRole::getName));
+                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getDeleted, 0))
+                .stream()
+                .collect(Collectors.toMap(SysRole::getCode, SysRole::getName));
 
         List<ProjectMemberVO> result = new ArrayList<>();
-        for (ProjectMember m : members) {
+        for (ProjectMember member : members) {
             ProjectMemberVO vo = new ProjectMemberVO();
-            vo.setUserId(m.getUserId());
-            SysUser u = userMap.get(m.getUserId());
-            if (u != null) {
-                vo.setNickname(StringUtils.hasText(u.getRealName()) ? u.getRealName() : u.getNickname());
-                vo.setUsername(u.getUsername());
-                vo.setEmployeeNo(u.getEmployeeNo());
-                List<String> roleCodes = userMapper.selectRoleCodesByUserId(u.getId());
+            vo.setUserId(member.getUserId());
+
+            SysUser user = userMap.get(member.getUserId());
+            if (user != null) {
+                vo.setNickname(StringUtils.hasText(user.getRealName()) ? user.getRealName() : user.getNickname());
+                vo.setUsername(user.getUsername());
+                vo.setEmployeeNo(user.getEmployeeNo());
+
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getId());
                 if (!roleCodes.isEmpty()) {
                     vo.setRole(roleCodes.get(0));
                     vo.setRoleName(sysRoleNameMap.getOrDefault(roleCodes.get(0), roleCodes.get(0)));
@@ -262,13 +269,16 @@ public class ProjectService {
                 new LambdaQueryWrapper<ProjectMember>()
                         .eq(ProjectMember::getProjectId, projectId)
                         .eq(ProjectMember::getUserId, userId));
-        if (exists > 0) throw BizException.of("成员已存在");
-        ProjectMember m = new ProjectMember();
-        m.setProjectId(projectId);
-        m.setUserId(userId);
-        m.setRole("MEMBER");
-        m.setCreatedAt(LocalDateTime.now());
-        memberMapper.insert(m);
+        if (exists > 0) {
+            throw BizException.of("成员已存在");
+        }
+
+        ProjectMember member = new ProjectMember();
+        member.setProjectId(projectId);
+        member.setUserId(userId);
+        member.setRole("MEMBER");
+        member.setCreatedAt(LocalDateTime.now());
+        memberMapper.insert(member);
     }
 
     @Transactional
@@ -279,21 +289,21 @@ public class ProjectService {
                 .eq(ProjectMember::getUserId, userId));
     }
 
-    // ─── DTO 转换 ──────────────────────────────────────────────
-
-    private ProjectDTO toDTO(Project p, SysUser owner, boolean canEdit) {
+    private ProjectDTO toDTO(Project project, SysUser owner, boolean canEdit) {
         ProjectDTO dto = new ProjectDTO();
-        dto.setId(p.getId());
-        dto.setName(p.getName());
-        dto.setCode(p.getCode());
-        dto.setDescription(p.getDescription());
-        dto.setStatus(p.getStatus());
-        dto.setVisibility(p.getVisibility());
-        dto.setOwnerId(p.getOwnerId());
-        dto.setOwnerName(owner != null ? (StringUtils.hasText(owner.getRealName()) ? owner.getRealName() : owner.getNickname()) : null);
-        dto.setStartDate(p.getStartDate());
-        dto.setEndDate(p.getEndDate());
-        dto.setCreatedAt(p.getCreatedAt());
+        dto.setId(project.getId());
+        dto.setName(project.getName());
+        dto.setCode(project.getCode());
+        dto.setDescription(project.getDescription());
+        dto.setStatus(project.getStatus());
+        dto.setVisibility(project.getVisibility());
+        dto.setOwnerId(project.getOwnerId());
+        dto.setOwnerName(owner != null
+                ? (StringUtils.hasText(owner.getRealName()) ? owner.getRealName() : owner.getNickname())
+                : null);
+        dto.setStartDate(project.getStartDate());
+        dto.setEndDate(project.getEndDate());
+        dto.setCreatedAt(project.getCreatedAt());
         dto.setCanEdit(canEdit);
         return dto;
     }

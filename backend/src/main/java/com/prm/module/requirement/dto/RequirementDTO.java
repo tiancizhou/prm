@@ -20,6 +20,9 @@ public class RequirementDTO {
     private Long assigneeId;
     private String assigneeName;
     private BigDecimal estimatedHours;
+    private BigDecimal actualHours;
+    private LocalDateTime actualStartAt;
+    private LocalDateTime actualEndAt;
     private String acceptanceCriteria;
     private LocalDate startDate;
     private LocalDate dueDate;

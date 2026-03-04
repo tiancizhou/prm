@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
+import com.prm.module.project.entity.ProjectMember;
+import com.prm.module.project.mapper.ProjectMemberMapper;
 import com.prm.module.requirement.domain.RequirementStateMachine;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
@@ -21,9 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +42,7 @@ public class RequirementService {
     private final RequirementReviewMapper reviewMapper;
     private final RequirementStateMachine stateMachine;
     private final SysUserMapper userMapper;
+    private final ProjectMemberMapper projectMemberMapper;
 
     public IPage<RequirementDTO> page(int pageNum, int pageSize, Long projectId, String status, String keyword,
                                        Long assigneeId, Long sprintId, Boolean unscheduled,
@@ -42,7 +51,54 @@ public class RequirementService {
         LambdaQueryWrapper<Requirement> wrapper = new LambdaQueryWrapper<Requirement>()
                 .eq(Requirement::getDeleted, 0)
                 .orderByDesc(Requirement::getCreatedAt);
-        if (projectId != null) wrapper.eq(Requirement::getProjectId, projectId);
+
+        if (!SecurityUtil.isSuperAdmin()) {
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            List<ProjectMember> memberships = projectMemberMapper.selectList(
+                    new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getUserId, currentUserId));
+            if (memberships.isEmpty()) {
+                return new Page<>(pageNum, pageSize);
+            }
+
+            Set<Long> allProjectIds = memberships.stream()
+                    .map(ProjectMember::getProjectId)
+                    .collect(Collectors.toCollection(HashSet::new));
+            Set<Long> managerProjectIds = memberships.stream()
+                    .filter(member -> "PROJECT_ADMIN".equalsIgnoreCase(member.getRole()))
+                    .map(ProjectMember::getProjectId)
+                    .collect(Collectors.toCollection(HashSet::new));
+
+            if (projectId != null) {
+                if (!allProjectIds.contains(projectId)) {
+                    return new Page<>(pageNum, pageSize);
+                }
+                wrapper.eq(Requirement::getProjectId, projectId);
+                if (!managerProjectIds.contains(projectId)) {
+                    wrapper.eq(Requirement::getAssigneeId, currentUserId);
+                }
+            } else {
+                if (managerProjectIds.isEmpty()) {
+                    wrapper.in(Requirement::getProjectId, allProjectIds)
+                            .eq(Requirement::getAssigneeId, currentUserId);
+                } else {
+                    Set<Long> memberOnlyProjectIds = new HashSet<>(allProjectIds);
+                    memberOnlyProjectIds.removeAll(managerProjectIds);
+
+                    if (memberOnlyProjectIds.isEmpty()) {
+                        wrapper.in(Requirement::getProjectId, managerProjectIds);
+                    } else {
+                        wrapper.and(condition -> condition
+                                .in(Requirement::getProjectId, managerProjectIds)
+                                .or(memberCondition -> memberCondition
+                                        .in(Requirement::getProjectId, memberOnlyProjectIds)
+                                        .eq(Requirement::getAssigneeId, currentUserId)));
+                    }
+                }
+            }
+        } else if (projectId != null) {
+            wrapper.eq(Requirement::getProjectId, projectId);
+        }
+
         if (StringUtils.hasText(status)) wrapper.eq(Requirement::getStatus, status);
         if (StringUtils.hasText(keyword)) wrapper.like(Requirement::getTitle, keyword);
         if (assigneeId != null) wrapper.eq(Requirement::getAssigneeId, assigneeId);
@@ -50,18 +106,20 @@ public class RequirementService {
         else if (sprintId != null) wrapper.eq(Requirement::getSprintId, sprintId);
         if (dueDateFrom != null) wrapper.ge(Requirement::getDueDate, dueDateFrom);
         if (dueDateTo != null)   wrapper.le(Requirement::getDueDate, dueDateTo);
-        // 非管理者只能看分配给自己的需求
-        if (!SecurityUtil.isManager()) {
-            wrapper.eq(Requirement::getAssigneeId, SecurityUtil.getCurrentUserId());
-        }
+
         IPage<Requirement> rPage = requirementMapper.selectPage(pageReq, wrapper);
         return rPage.convert(this::toDTO);
     }
 
     @Transactional
     public RequirementDTO create(CreateRequirementRequest request) {
-        if (!SecurityUtil.isManager()) throw BizException.forbidden("只有项目经理或超级管理员才能创建需求");
         Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isSuperAdmin()) {
+            ProjectMember membership = findMembership(request.getProjectId(), currentUserId);
+            if (!isProjectManager(membership)) {
+                throw BizException.forbidden("只有项目经理或超级管理员才能创建需求");
+            }
+        }
         Requirement r = new Requirement();
         r.setProjectId(request.getProjectId());
         r.setSprintId(request.getSprintId());
@@ -72,6 +130,7 @@ public class RequirementService {
         r.setStatus("DRAFT");
         r.setAssigneeId(request.getAssigneeId());
         r.setEstimatedHours(request.getEstimatedHours() != null ? request.getEstimatedHours() : BigDecimal.ZERO);
+        r.setActualHours(BigDecimal.ZERO);
         r.setAcceptanceCriteria(request.getAcceptanceCriteria());
         r.setStartDate(request.getStartDate());
         r.setDueDate(request.getDueDate());
@@ -85,12 +144,7 @@ public class RequirementService {
     public RequirementDTO getById(Long id) {
         Requirement r = requirementMapper.selectById(id);
         if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
-        // 非管理者只能查看分配给自己的需求
-        if (!SecurityUtil.isManager()) {
-            if (r.getAssigneeId() == null || !r.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
-                throw BizException.forbidden("无权查看该需求");
-            }
-        }
+        ensureRequirementReadable(r);
         return toDTO(r);
     }
 
@@ -98,12 +152,7 @@ public class RequirementService {
     public RequirementDTO update(Long id, UpdateRequirementRequest request) {
         Requirement r = requirementMapper.selectById(id);
         if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
-        // 管理员可编辑任意需求；负责人只能编辑分配给自己的需求
-        if (!SecurityUtil.isManager()) {
-            if (r.getAssigneeId() == null || !r.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
-                throw BizException.forbidden("只能编辑分配给自己的需求");
-            }
-        }
+        ensureRequirementManageable(r);
         r.setTitle(request.getTitle());
         r.setDescription(request.getDescription());
         r.setSource(request.getSource());
@@ -120,16 +169,23 @@ public class RequirementService {
     }
 
     @Transactional
-    public RequirementDTO updateStatus(Long id, String newStatus) {
+    public RequirementDTO updateStatus(Long id, String newStatus, LocalDateTime actualStartAt, LocalDateTime actualEndAt) {
         Requirement r = requirementMapper.selectById(id);
         if (r == null) throw BizException.notFound("需求");
-        // 管理员可变更任意需求状态；负责人只能变更分配给自己的需求状态
-        if (!SecurityUtil.isManager()) {
-            if (r.getAssigneeId() == null || !r.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
-                throw BizException.forbidden("只能变更分配给自己的需求状态");
-            }
-        }
+        ensureRequirementEditable(r);
         stateMachine.transit(r.getStatus(), newStatus);
+
+        if ("DONE".equalsIgnoreCase(newStatus)) {
+            BigDecimal resolvedActualHours = resolveDoneActualHours(actualStartAt, actualEndAt);
+            r.setActualStartAt(actualStartAt);
+            r.setActualEndAt(actualEndAt);
+            r.setActualHours(resolvedActualHours);
+        } else {
+            r.setActualStartAt(null);
+            r.setActualEndAt(null);
+            r.setActualHours(BigDecimal.ZERO);
+        }
+
         r.setStatus(newStatus);
         r.setUpdatedBy(SecurityUtil.getCurrentUserId());
         requirementMapper.updateById(r);
@@ -138,6 +194,12 @@ public class RequirementService {
 
     @Transactional
     public void addReview(Long requirementId, String conclusion, String remark) {
+        Requirement requirement = requirementMapper.selectById(requirementId);
+        if (requirement == null || requirement.getDeleted() == 1) {
+            throw BizException.notFound("需求");
+        }
+        ensureRequirementReadable(requirement);
+
         Long reviewerId = SecurityUtil.getCurrentUserId();
         RequirementReview review = new RequirementReview();
         review.setRequirementId(requirementId);
@@ -163,6 +225,9 @@ public class RequirementService {
         dto.setStatusLabel(RequirementStateMachine.STATUS_LABELS.getOrDefault(r.getStatus(), r.getStatus()));
         dto.setAssigneeId(r.getAssigneeId());
         dto.setEstimatedHours(r.getEstimatedHours());
+        dto.setActualHours(r.getActualHours());
+        dto.setActualStartAt(r.getActualStartAt());
+        dto.setActualEndAt(r.getActualEndAt());
         dto.setAcceptanceCriteria(r.getAcceptanceCriteria());
         dto.setStartDate(r.getStartDate());
         dto.setDueDate(r.getDueDate());
@@ -173,5 +238,73 @@ public class RequirementService {
             if (assignee != null) dto.setAssigneeName(assignee.getNickname());
         }
         return dto;
+    }
+
+    private ProjectMember findMembership(Long projectId, Long userId) {
+        return projectMemberMapper.selectOne(new LambdaQueryWrapper<ProjectMember>()
+                .eq(ProjectMember::getProjectId, projectId)
+                .eq(ProjectMember::getUserId, userId));
+    }
+
+    private boolean isProjectManager(ProjectMember membership) {
+        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
+    }
+
+    private void ensureRequirementReadable(Requirement requirement) {
+        if (SecurityUtil.isSuperAdmin()) {
+            return;
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        ProjectMember membership = findMembership(requirement.getProjectId(), currentUserId);
+        if (membership == null) {
+            throw BizException.forbidden("无权查看该需求");
+        }
+        if (isProjectManager(membership) || Objects.equals(currentUserId, requirement.getAssigneeId())) {
+            return;
+        }
+        throw BizException.forbidden("无权查看该需求");
+    }
+
+    private void ensureRequirementEditable(Requirement requirement) {
+        if (SecurityUtil.isSuperAdmin()) {
+            return;
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        ProjectMember membership = findMembership(requirement.getProjectId(), currentUserId);
+        if (membership == null) {
+            throw BizException.forbidden("仅项目经理或需求负责人可编辑");
+        }
+        if (isProjectManager(membership) || Objects.equals(currentUserId, requirement.getAssigneeId())) {
+            return;
+        }
+        throw BizException.forbidden("仅项目经理或需求负责人可编辑");
+    }
+
+    private void ensureRequirementManageable(Requirement requirement) {
+        if (SecurityUtil.isSuperAdmin()) {
+            return;
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        ProjectMember membership = findMembership(requirement.getProjectId(), currentUserId);
+        if (!isProjectManager(membership)) {
+            throw BizException.forbidden("仅项目经理可编辑需求详情");
+        }
+    }
+
+    private BigDecimal resolveDoneActualHours(LocalDateTime actualStartAt, LocalDateTime actualEndAt) {
+        if (actualStartAt == null || actualEndAt == null) {
+            throw BizException.of("完成需求时必须填写开始时间和结束时间");
+        }
+        if (!actualEndAt.isAfter(actualStartAt)) {
+            throw BizException.of("结束时间必须晚于开始时间");
+        }
+
+        long minutes = Duration.between(actualStartAt, actualEndAt).toMinutes();
+        if (minutes <= 0) {
+            throw BizException.of("工时计算失败，请检查时间范围");
+        }
+
+        return BigDecimal.valueOf(minutes)
+                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }
 }

@@ -27,7 +27,7 @@
         </div>
       </div>
       <div class="header-right page-actions">
-        <el-button v-if="isManager" type="primary" :icon="Plus" @click="openCreate">{{ requirementText.buttons.newRequirement }}</el-button>
+        <el-button v-if="canManageProject" type="primary" :icon="Plus" @click="openCreate">{{ requirementText.buttons.newRequirement }}</el-button>
         <el-dropdown trigger="click" @command="handleImportExport">
           <el-button type="default" :icon="MoreFilled" circle :aria-label="requirementText.buttons.moreActions" />
           <template #dropdown>
@@ -152,7 +152,7 @@
             <div class="expand-wrap">
               <div class="expand-header">
                 <span class="expand-title">{{ requirementText.expand.relatedTasks }}</span>
-                <el-button v-if="isManager" size="small" type="primary" :icon="Plus" @click="openTaskCreate(row)">
+                <el-button v-if="canManageProject" size="small" type="primary" :icon="Plus" @click="openTaskCreate(row)">
                   {{ requirementText.buttons.decomposeToTask }}
                 </el-button>
               </div>
@@ -235,9 +235,15 @@
           <template #default="{ row }">{{ formatDate(row.dueDate) || '—' }}</template>
         </el-table-column>
 
-        <el-table-column :label="requirementText.tableHeaders.estimate" width="80" align="center" v-if="colVisible('estimate')">
+        <el-table-column :label="requirementText.tableHeaders.estimate" width="92" align="center" v-if="colVisible('estimate')">
           <template #default="{ row }">
             {{ row.estimatedHours != null && row.estimatedHours !== '' ? row.estimatedHours + 'h' : '—' }}
+          </template>
+        </el-table-column>
+
+        <el-table-column :label="requirementText.tableHeaders.actual" width="92" align="center" v-if="colVisible('actual')">
+          <template #default="{ row }">
+            {{ row.actualHours != null && row.actualHours !== '' ? row.actualHours + 'h' : '—' }}
           </template>
         </el-table-column>
 
@@ -252,13 +258,13 @@
             <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openDetail(row)">
               {{ requirementText.buttons.view }}
             </el-button>
-            <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openEdit(row)">
+            <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openEdit(row)">
               {{ requirementText.buttons.edit }}
             </el-button>
-            <el-button v-if="isManager" size="small" link type="primary" :icon="Plus" @click.stop="openTaskCreate(row)">
+            <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openTaskCreate(row)">
               {{ requirementText.buttons.decompose }}
             </el-button>
-            <el-dropdown v-if="canViewRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
+            <el-dropdown v-if="canEditRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
               <el-button size="small" link>{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -450,6 +456,9 @@
         <el-descriptions :column="2" border size="small" class="detail-desc">
           <el-descriptions-item :label="requirementText.formLabels.owner">{{ detailReq.assigneeName || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="requirementText.detail.estimatedHours">{{ detailReq.estimatedHours != null ? detailReq.estimatedHours + 'h' : requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="requirementText.detail.actualHours">{{ detailReq.actualHours != null ? detailReq.actualHours + 'h' : requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="requirementText.formLabels.actualStartAt">{{ formatDateTime(detailReq.actualStartAt) || requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="requirementText.formLabels.actualEndAt">{{ formatDateTime(detailReq.actualEndAt) || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="requirementText.formLabels.startDate">{{ formatDate(detailReq.startDate) || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="requirementText.formLabels.dueDate">{{ formatDate(detailReq.dueDate) || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="requirementText.formLabels.description" :span="2">{{ detailReq.description || requirementText.detail.noneSymbol }}</el-descriptions-item>
@@ -470,6 +479,35 @@
       </div>
       <template #footer>
         <el-button @click="showDetail = false">{{ requirementText.buttons.close }}</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showDoneStatusDialog" :title="requirementText.dialogs.doneHoursTitle" width="520px" destroy-on-close>
+      <el-form :model="doneStatusForm" label-width="100px">
+        <el-form-item :label="requirementText.formLabels.actualStartAt" required>
+          <el-date-picker
+            v-model="doneStatusForm.actualStartAt"
+            type="datetime"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            :placeholder="requirementText.placeholders.doneStartAt"
+            class="full-width-control"
+          />
+        </el-form-item>
+        <el-form-item :label="requirementText.formLabels.actualEndAt" required>
+          <el-date-picker
+            v-model="doneStatusForm.actualEndAt"
+            type="datetime"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            :placeholder="requirementText.placeholders.doneEndAt"
+            class="full-width-control"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeDoneStatusDialog">{{ requirementText.buttons.cancel }}</el-button>
+        <el-button type="primary" :loading="doneStatusSubmitting" @click="submitDoneStatus">{{ requirementText.buttons.save }}</el-button>
       </template>
     </el-dialog>
 
@@ -517,19 +555,21 @@ import { projectApi } from '@/api/project'
 import { sprintApi } from '@/api/sprint'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useProjectStore } from '@/stores/project'
 import { REQUIREMENT_I18N } from '@/constants/requirement'
 import { resolveThemeLocale } from '@/constants/theme'
 
 const authStore = useAuthStore()
+const projectStore = useProjectStore()
 const route = useRoute()
 const projectId = Number(route.params.id)
 const currentUserId = computed(() => authStore.user?.userId ?? null)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const requirementText = REQUIREMENT_I18N[currentLocale]
 
-const isManager = computed(() => {
-  const roles: string[] = authStore.user?.roles || []
-  return roles.includes('SUPER_ADMIN') || roles.includes('PROJECT_ADMIN')
+const canManageProject = computed(() => {
+  const currentProject = projectStore.currentProject
+  return currentProject?.id === projectId && currentProject?.canEdit === true
 })
 
 // View mode & quick view
@@ -617,7 +657,7 @@ const columnOptions = [
   ...requirementText.columnOptions
 ]
 
-const visibleColumns = ref<string[]>(['id', 'title', 'priority', 'status', 'assignee', 'dueDate', 'estimate', 'taskCount'])
+const visibleColumns = ref<string[]>(['id', 'title', 'priority', 'status', 'assignee', 'dueDate', 'estimate', 'actual', 'taskCount'])
 
 function colVisible(key: string) {
   return visibleColumns.value.includes(key)
@@ -690,8 +730,22 @@ function nextStatusOptions(row: any): { command: string; label: string }[] {
 
 /** Whether the current user can view this requirement (manager or assignee) */
 function canViewRequirement(row: any): boolean {
-  if (isManager.value) return true
+  if (canManageProject.value) return true
   return row?.assigneeId != null && row.assigneeId === currentUserId.value
+}
+
+function canEditRequirement(row: any): boolean {
+  if (canManageProject.value) return true
+  return row?.assigneeId != null && row.assigneeId === currentUserId.value
+}
+
+async function ensureProjectPermission() {
+  const currentProject = projectStore.currentProject
+  if (currentProject?.id === projectId && typeof currentProject.canEdit === 'boolean') {
+    return
+  }
+  const response = await projectApi.get(projectId)
+  projectStore.setCurrentProject((response as any).data)
 }
 
 async function openDetail(row: any) {
@@ -723,6 +777,18 @@ function formatDate(d: string | null | undefined): string {
   return date.toISOString().slice(0, 10)
 }
 
+function formatDateTime(d: string | null | undefined): string {
+  if (!d) return ''
+  const date = new Date(d)
+  if (isNaN(date.getTime())) return d
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`
+}
+
 function formatFileSize(bytes: number | null | undefined): string {
   if (bytes == null || bytes === 0) return '—'
   if (bytes < 1024) return bytes + ' B'
@@ -742,6 +808,27 @@ const editFormRef = ref()
 const editingReq = ref<any>(null)
 const editAttachments = ref<any[]>([])
 const editUploading = ref(false)
+
+watch(showEdit, (visible) => {
+  if (!visible) {
+    return
+  }
+  if (canManageProject.value) {
+    return
+  }
+  showEdit.value = false
+  editingReq.value = null
+  ElMessage.warning(requirementText.messages.noManagePermission)
+})
+
+watch(canManageProject, (allowed) => {
+  if (allowed || !showEdit.value) {
+    return
+  }
+  showEdit.value = false
+  editingReq.value = null
+  ElMessage.warning(requirementText.messages.noManagePermission)
+})
 
 const showDetail = ref(false)
 const detailReq = ref<any>(null)
@@ -775,6 +862,14 @@ const showTaskCreate = ref(false)
 const creatingTask = ref(false)
 const currentReq = ref<any>(null)
 const taskForm = reactive({ title: '', type: 'TASK', priority: 'MEDIUM', estimatedHours: 0, dueDate: '' })
+
+const showDoneStatusDialog = ref(false)
+const doneStatusSubmitting = ref(false)
+const doneStatusTarget = ref<any>(null)
+const doneStatusForm = reactive({
+  actualStartAt: '',
+  actualEndAt: ''
+})
 
 async function load() {
   loading.value = true
@@ -832,10 +927,18 @@ function onExpand(row: any, expandedRows: any[]) {
 }
 
 function openCreate() {
+  if (!canManageProject.value) {
+    ElMessage.warning(requirementText.messages.noManagePermission)
+    return
+  }
   showCreate.value = true
 }
 
 async function openEdit(row: any) {
+  if (!canManageProject.value) {
+    ElMessage.warning(requirementText.messages.noManagePermission)
+    return
+  }
   editingReq.value = row
   try {
     const res = await requirementApi.get(row.id)
@@ -905,6 +1008,10 @@ async function saveEdit() {
     return
   }
   if (!editingReq.value?.id) return
+  if (!canManageProject.value) {
+    ElMessage.warning(requirementText.messages.noManagePermission)
+    return
+  }
   updating.value = true
   try {
     const payload = {
@@ -929,6 +1036,10 @@ async function saveEdit() {
 
 
 function openTaskCreate(req: any) {
+  if (!canManageProject.value) {
+    ElMessage.warning(requirementText.messages.noManagePermission)
+    return
+  }
   currentReq.value = req
   taskForm.title = ''
   taskForm.type = 'TASK'
@@ -984,15 +1095,71 @@ async function createTask() {
 }
 
 async function changeStatus(row: any, status: string) {
+  if (!canEditRequirement(row)) {
+    ElMessage.warning(requirementText.messages.noEditPermission)
+    return
+  }
+  if (status === 'DONE') {
+    openDoneStatusDialog(row)
+    return
+  }
+
   await requirementApi.updateStatus(row.id, status)
   ElMessage.success(requirementText.messages.statusUpdated)
   load()
 }
 
+function openDoneStatusDialog(row: any) {
+  doneStatusTarget.value = row
+  doneStatusForm.actualStartAt = ''
+  doneStatusForm.actualEndAt = ''
+  showDoneStatusDialog.value = true
+}
+
+function closeDoneStatusDialog() {
+  showDoneStatusDialog.value = false
+  doneStatusTarget.value = null
+  doneStatusForm.actualStartAt = ''
+  doneStatusForm.actualEndAt = ''
+}
+
+async function submitDoneStatus() {
+  if (!doneStatusTarget.value?.id) {
+    return
+  }
+  if (!doneStatusForm.actualStartAt || !doneStatusForm.actualEndAt) {
+    ElMessage.warning(requirementText.messages.doneTimeRequired)
+    return
+  }
+
+  const startAtMs = new Date(doneStatusForm.actualStartAt).getTime()
+  const endAtMs = new Date(doneStatusForm.actualEndAt).getTime()
+  if (!Number.isFinite(startAtMs) || !Number.isFinite(endAtMs) || endAtMs <= startAtMs) {
+    ElMessage.warning(requirementText.messages.doneTimeRangeInvalid)
+    return
+  }
+
+  doneStatusSubmitting.value = true
+  try {
+    await requirementApi.updateStatus(
+      doneStatusTarget.value.id,
+      'DONE',
+      doneStatusForm.actualStartAt,
+      doneStatusForm.actualEndAt
+    )
+    ElMessage.success(requirementText.messages.statusUpdated)
+    closeDoneStatusDialog()
+    await load()
+  } finally {
+    doneStatusSubmitting.value = false
+  }
+}
+
 onMounted(() => {
-  load()
-  loadMembers()
-  loadSprints()
+  void (async () => {
+    await ensureProjectPermission()
+    await Promise.all([load(), loadMembers(), loadSprints()])
+  })()
 })
 </script>
 

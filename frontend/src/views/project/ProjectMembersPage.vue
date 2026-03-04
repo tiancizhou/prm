@@ -6,7 +6,7 @@
         <p class="page-subtitle">{{ membersText.pageSubtitle }}</p>
       </div>
       <div class="page-actions">
-        <el-button type="primary" :icon="Plus" @click="openAdd">{{ membersText.buttons.addMember }}</el-button>
+        <el-button v-if="canManageMembers" type="primary" :icon="Plus" @click="openAdd">{{ membersText.buttons.addMember }}</el-button>
       </div>
     </header>
 
@@ -21,7 +21,7 @@
             <span v-else class="text-muted">{{ membersText.labels.noneSymbol }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="membersText.labels.actions" width="120" fixed="right">
+        <el-table-column v-if="canManageMembers" :label="membersText.labels.actions" width="120" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="danger" link @click="removeMember(row)">{{ membersText.buttons.remove }}</el-button>
           </template>
@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -68,9 +68,11 @@ import http from '@/api/http'
 import { projectApi } from '@/api/project'
 import { PROJECT_MEMBERS_I18N } from '@/constants/projectMembers'
 import { resolveThemeLocale } from '@/constants/theme'
+import { useProjectStore } from '@/stores/project'
 
 const route = useRoute()
 const projectId = Number(route.params.id)
+const projectStore = useProjectStore()
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const membersText = PROJECT_MEMBERS_I18N[currentLocale]
 
@@ -83,6 +85,11 @@ const addForm = reactive({ userId: null as number | null })
 
 const userOptions = ref<any[]>([])
 const userSearchLoading = ref(false)
+
+const canManageMembers = computed(() => {
+  const currentProject = projectStore.currentProject
+  return currentProject?.id === projectId && currentProject?.canEdit === true
+})
 
 const roleTagTypeMap: Record<string, 'danger' | 'warning' | 'primary' | 'success' | 'info'> = {
   SUPER_ADMIN: 'danger',
@@ -111,6 +118,15 @@ async function loadMembers() {
   }
 }
 
+async function ensureProjectPermission() {
+  const currentProject = projectStore.currentProject
+  if (currentProject?.id === projectId && typeof currentProject.canEdit === 'boolean') {
+    return
+  }
+  const response = await projectApi.get(projectId)
+  projectStore.setCurrentProject((response as any).data)
+}
+
 async function searchUsers(query: string) {
   if (!query) {
     userOptions.value = []
@@ -126,12 +142,20 @@ async function searchUsers(query: string) {
 }
 
 function openAdd() {
+  if (!canManageMembers.value) {
+    ElMessage.warning(membersText.messages.noPermission)
+    return
+  }
   addForm.userId = null
   userOptions.value = []
   showAdd.value = true
 }
 
 async function addMember() {
+  if (!canManageMembers.value) {
+    ElMessage.warning(membersText.messages.noPermission)
+    return
+  }
   if (!addForm.userId) {
     ElMessage.warning(membersText.messages.selectMemberFirst)
     return
@@ -148,6 +172,10 @@ async function addMember() {
 }
 
 async function removeMember(member: any) {
+  if (!canManageMembers.value) {
+    ElMessage.warning(membersText.messages.noPermission)
+    return
+  }
   const displayName = member.nickname || member.username
   try {
     await ElMessageBox.confirm(withName(membersText.confirms.removeMember, displayName), membersText.dialogs.confirmTitle, { type: 'warning' })
@@ -160,7 +188,10 @@ async function removeMember(member: any) {
 }
 
 onMounted(() => {
-  void loadMembers()
+  void (async () => {
+    await ensureProjectPermission()
+    await loadMembers()
+  })()
 })
 </script>
 

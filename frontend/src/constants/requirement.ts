@@ -30,6 +30,7 @@ export const REQUIREMENT_I18N: Record<
       createTask: string
       decomposeToTask: string
       viewAllTasks: string
+      autoCalculate: string
     }
     tooltips: {
       advancedFilter: string
@@ -46,6 +47,8 @@ export const REQUIREMENT_I18N: Record<
       chooseStartDate: string
       chooseDueDate: string
       optional: string
+      doneStartAt: string
+      doneEndAt: string
     }
     quickTabs: Record<'all' | 'assigned' | 'due_week' | 'unscheduled', string>
     columnPickerTitle: string
@@ -69,6 +72,7 @@ export const REQUIREMENT_I18N: Record<
       startDate: string
       dueDate: string
       estimate: string
+      actual: string
       taskCount: string
       actions: string
     }
@@ -76,6 +80,8 @@ export const REQUIREMENT_I18N: Record<
       requirementTitle: string
       priority: string
       estimatedHours: string
+      actualStartAt: string
+      actualEndAt: string
       sprint: string
       startDate: string
       dueDate: string
@@ -92,11 +98,13 @@ export const REQUIREMENT_I18N: Record<
       editRequirement: string
       requirementDetail: string
       decomposeTaskPrefix: string
+      doneHoursTitle: string
     }
     detail: {
       attachments: string
       noAttachments: string
       estimatedHours: string
+      actualHours: string
       noneSymbol: string
     }
     upload: {
@@ -124,6 +132,8 @@ export const REQUIREMENT_I18N: Record<
     messages: {
       importSoon: string
       exportSoon: string
+      noManagePermission: string
+      noEditPermission: string
       loadDetailFailed: string
       startDownload: string
       downloadFailed: string
@@ -140,6 +150,11 @@ export const REQUIREMENT_I18N: Record<
       taskTitleRequired: string
       taskCreated: string
       statusUpdated: string
+      doneTimeRequired: string
+      doneTimeRangeInvalid: string
+      doneHoursPrompt: string
+      doneHoursInvalid: string
+      autoCalculatedHours: string
     }
   }
 > = {
@@ -170,7 +185,8 @@ export const REQUIREMENT_I18N: Record<
       uploadNewAttachment: '上传新附件',
       createTask: '创建任务',
       decomposeToTask: '拆解为任务',
-      viewAllTasks: '查看全部任务'
+      viewAllTasks: '查看全部任务',
+      autoCalculate: '自动计算'
     },
     tooltips: {
       advancedFilter: '高级筛选',
@@ -186,7 +202,9 @@ export const REQUIREMENT_I18N: Record<
       priority: '优先级',
       chooseStartDate: '选择开始日期',
       chooseDueDate: '选择截止日期',
-      optional: '选填'
+      optional: '选填',
+      doneStartAt: '请选择开始时间',
+      doneEndAt: '请选择结束时间'
     },
     quickTabs: {
       all: '全部',
@@ -215,6 +233,7 @@ export const REQUIREMENT_I18N: Record<
       startDate: '开始日期',
       dueDate: '截止日期',
       estimate: '预估',
+      actual: '实际',
       taskCount: '任务数',
       actions: '操作'
     },
@@ -222,6 +241,8 @@ export const REQUIREMENT_I18N: Record<
       requirementTitle: '需求标题',
       priority: '优先级',
       estimatedHours: '预估工时',
+      actualStartAt: '实际开始',
+      actualEndAt: '实际结束',
       sprint: '迭代',
       startDate: '开始日期',
       dueDate: '截止日期',
@@ -237,12 +258,14 @@ export const REQUIREMENT_I18N: Record<
       createRequirement: '新建需求',
       editRequirement: '编辑需求',
       requirementDetail: '需求详情',
-      decomposeTaskPrefix: '拆解任务'
+      decomposeTaskPrefix: '拆解任务',
+      doneHoursTitle: '填写完成时间'
     },
     detail: {
       attachments: '附件',
       noAttachments: '暂无附件',
       estimatedHours: '预估工时',
+      actualHours: '实际工时',
       noneSymbol: '—'
     },
     upload: {
@@ -271,6 +294,7 @@ export const REQUIREMENT_I18N: Record<
       { key: 'startDate', label: '开始日期' },
       { key: 'dueDate', label: '截止日期' },
       { key: 'estimate', label: '预估' },
+      { key: 'actual', label: '实际' },
       { key: 'taskCount', label: '任务数' }
     ],
     priorityLabels: {
@@ -297,6 +321,8 @@ export const REQUIREMENT_I18N: Record<
     messages: {
       importSoon: '导入功能即将上线',
       exportSoon: '导出功能即将上线',
+      noManagePermission: '仅项目经理可执行该操作',
+      noEditPermission: '仅项目经理或需求负责人可变更状态',
       loadDetailFailed: '加载需求详情失败',
       startDownload: '开始下载',
       downloadFailed: '下载失败',
@@ -312,7 +338,12 @@ export const REQUIREMENT_I18N: Record<
       requirementCreated: '需求创建成功',
       taskTitleRequired: '请输入任务标题',
       taskCreated: '任务创建成功',
-      statusUpdated: '状态已更新'
+      statusUpdated: '状态已更新',
+      doneTimeRequired: '请填写开始时间和结束时间',
+      doneTimeRangeInvalid: '结束时间必须晚于开始时间',
+      doneHoursPrompt: '请输入完成工时，或点击“自动计算”',
+      doneHoursInvalid: '请填写大于 0 的工时',
+      autoCalculatedHours: '已按规则自动计算工时'
     }
   },
   'en-US': {
@@ -342,7 +373,8 @@ export const REQUIREMENT_I18N: Record<
       uploadNewAttachment: 'Upload New Attachment',
       createTask: 'Create Task',
       decomposeToTask: 'Decompose to Task',
-      viewAllTasks: 'View All Tasks'
+      viewAllTasks: 'View All Tasks',
+      autoCalculate: 'Auto Calculate'
     },
     tooltips: {
       advancedFilter: 'Advanced filters',
@@ -358,7 +390,9 @@ export const REQUIREMENT_I18N: Record<
       priority: 'Priority',
       chooseStartDate: 'Select start date',
       chooseDueDate: 'Select due date',
-      optional: 'Optional'
+      optional: 'Optional',
+      doneStartAt: 'Select start time',
+      doneEndAt: 'Select end time'
     },
     quickTabs: {
       all: 'All',
@@ -387,6 +421,7 @@ export const REQUIREMENT_I18N: Record<
       startDate: 'Start Date',
       dueDate: 'Due Date',
       estimate: 'Estimate',
+      actual: 'Actual',
       taskCount: 'Tasks',
       actions: 'Actions'
     },
@@ -394,6 +429,8 @@ export const REQUIREMENT_I18N: Record<
       requirementTitle: 'Requirement Title',
       priority: 'Priority',
       estimatedHours: 'Estimated Hours',
+      actualStartAt: 'Actual Start',
+      actualEndAt: 'Actual End',
       sprint: 'Sprint',
       startDate: 'Start Date',
       dueDate: 'Due Date',
@@ -409,12 +446,14 @@ export const REQUIREMENT_I18N: Record<
       createRequirement: 'Create Requirement',
       editRequirement: 'Edit Requirement',
       requirementDetail: 'Requirement Details',
-      decomposeTaskPrefix: 'Decompose Task'
+      decomposeTaskPrefix: 'Decompose Task',
+      doneHoursTitle: 'Completion Time Range'
     },
     detail: {
       attachments: 'Attachments',
       noAttachments: 'No attachments',
       estimatedHours: 'Estimated Hours',
+      actualHours: 'Actual Hours',
       noneSymbol: '—'
     },
     upload: {
@@ -443,6 +482,7 @@ export const REQUIREMENT_I18N: Record<
       { key: 'startDate', label: 'Start Date' },
       { key: 'dueDate', label: 'Due Date' },
       { key: 'estimate', label: 'Estimate' },
+      { key: 'actual', label: 'Actual' },
       { key: 'taskCount', label: 'Task Count' }
     ],
     priorityLabels: {
@@ -469,6 +509,8 @@ export const REQUIREMENT_I18N: Record<
     messages: {
       importSoon: 'Import feature is coming soon',
       exportSoon: 'Export feature is coming soon',
+      noManagePermission: 'Only project managers can perform this action',
+      noEditPermission: 'Only project managers or assignees can change status',
       loadDetailFailed: 'Failed to load requirement details',
       startDownload: 'Download started',
       downloadFailed: 'Download failed',
@@ -484,7 +526,12 @@ export const REQUIREMENT_I18N: Record<
       requirementCreated: 'Requirement created successfully',
       taskTitleRequired: 'Please enter task title',
       taskCreated: 'Task created successfully',
-      statusUpdated: 'Status updated'
+      statusUpdated: 'Status updated',
+      doneTimeRequired: 'Please provide both start and end time',
+      doneTimeRangeInvalid: 'End time must be later than start time',
+      doneHoursPrompt: 'Enter completion hours, or click Auto Calculate',
+      doneHoursInvalid: 'Please enter hours greater than 0',
+      autoCalculatedHours: 'Hours were auto-calculated by rule'
     }
   }
 }

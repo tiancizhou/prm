@@ -5,8 +5,12 @@ export const requirementApi = {
   get: (id: number) => http.get(`/requirements/${id}`),
   create: (data: any) => http.post('/requirements', data),
   update: (id: number, data: any) => http.put(`/requirements/${id}`, data),
-  updateStatus: (id: number, status: string) =>
-    http.put(`/requirements/${id}/status`, null, { params: { status } }),
+  updateStatus: (id: number, status: string, actualStartAt?: string, actualEndAt?: string) => {
+    const params: Record<string, string | number | boolean> = { status }
+    if (actualStartAt) params.actualStartAt = actualStartAt
+    if (actualEndAt) params.actualEndAt = actualEndAt
+    return http.put(`/requirements/${id}/status`, null, { params })
+  },
   addReview: (id: number, conclusion: string, remark?: string) =>
     http.post(`/requirements/${id}/review`, null, { params: { conclusion, remark } }),
   uploadAttachment: (requirementId: number, file: File) => {

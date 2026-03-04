@@ -23,6 +23,9 @@ public class Requirement {
     private String status;
     private Long assigneeId;
     private BigDecimal estimatedHours;
+    private BigDecimal actualHours;
+    private LocalDateTime actualStartAt;
+    private LocalDateTime actualEndAt;
     private String acceptanceCriteria;
     private LocalDate startDate;
     private LocalDate dueDate;

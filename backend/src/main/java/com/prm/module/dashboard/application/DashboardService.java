@@ -2,12 +2,16 @@ package com.prm.module.dashboard.application;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prm.common.exception.BizException;
+import com.prm.common.util.SecurityUtil;
 import com.prm.module.bug.entity.Bug;
 import com.prm.module.bug.mapper.BugMapper;
 import com.prm.module.dashboard.dto.OverviewDTO;
 import com.prm.module.dashboard.entity.DashboardSnapshot;
 import com.prm.module.dashboard.mapper.DashboardSnapshotMapper;
 import com.prm.module.project.entity.Project;
+import com.prm.module.project.entity.ProjectMember;
+import com.prm.module.project.mapper.ProjectMemberMapper;
 import com.prm.module.project.mapper.ProjectMapper;
 import com.prm.module.requirement.entity.Requirement;
 import com.prm.module.requirement.mapper.RequirementMapper;
@@ -20,7 +24,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -28,6 +35,7 @@ import java.util.List;
 public class DashboardService {
 
     private final ProjectMapper projectMapper;
+    private final ProjectMemberMapper projectMemberMapper;
     private final RequirementMapper requirementMapper;
     private final TaskMapper taskMapper;
     private final BugMapper bugMapper;
@@ -35,75 +43,165 @@ public class DashboardService {
     private final ObjectMapper objectMapper;
 
     public OverviewDTO getOverview(Long projectId) {
-        LambdaQueryWrapper<Project> pWrapper = new LambdaQueryWrapper<Project>().eq(Project::getDeleted, 0);
-        if (projectId != null) pWrapper.eq(Project::getId, projectId);
-        long totalProjects = projectMapper.selectCount(pWrapper);
+        DashboardScope scope = resolveDashboardScope(projectId);
+        return buildOverview(scope);
+    }
+
+    public void requireAggregatePermission(Long projectId) {
+        if (SecurityUtil.isSuperAdmin()) {
+            return;
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        ProjectMember membership = projectMemberMapper.selectOne(new LambdaQueryWrapper<ProjectMember>()
+                .eq(ProjectMember::getProjectId, projectId)
+                .eq(ProjectMember::getUserId, currentUserId));
+        if (membership == null || !"PROJECT_ADMIN".equalsIgnoreCase(membership.getRole())) {
+            throw BizException.forbidden("仅项目经理可触发所属项目聚合");
+        }
+    }
+
+    private DashboardScope resolveDashboardScope(Long projectId) {
+        if (SecurityUtil.isSuperAdmin()) {
+            return new DashboardScope(projectId == null ? null : Set.of(projectId), false, null);
+        }
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        Set<Long> memberProjectIds = projectMemberMapper.selectList(
+                        new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getUserId, currentUserId))
+                .stream()
+                .map(ProjectMember::getProjectId)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        Set<Long> managerProjectIds = projectMemberMapper.selectList(
+                        new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getUserId, currentUserId)
+                                .eq(ProjectMember::getRole, "PROJECT_ADMIN"))
+                .stream()
+                .map(ProjectMember::getProjectId)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        if (memberProjectIds.isEmpty()) {
+            return new DashboardScope(Set.of(), true, currentUserId);
+        }
+
+        Set<Long> scopedProjectIds;
+        if (projectId == null) {
+            scopedProjectIds = memberProjectIds;
+        } else {
+            scopedProjectIds = memberProjectIds.contains(projectId) ? Set.of(projectId) : Set.of();
+        }
+
+        boolean managerView;
+        if (projectId != null) {
+            managerView = managerProjectIds.contains(projectId);
+        } else {
+            managerView = !managerProjectIds.isEmpty();
+            if (managerView) {
+                scopedProjectIds = managerProjectIds;
+            }
+        }
+        return new DashboardScope(scopedProjectIds, !managerView, currentUserId);
+    }
+
+    private OverviewDTO buildOverview(DashboardScope scope) {
+        Set<Long> scopedProjectIds = scope.projectIds();
+        if (scopedProjectIds != null && scopedProjectIds.isEmpty()) {
+            return OverviewDTO.builder().build();
+        }
+        boolean personalView = scope.personalView();
+        Long currentUserId = scope.currentUserId();
+
+        LambdaQueryWrapper<Project> projectWrapper = new LambdaQueryWrapper<Project>()
+                .eq(Project::getDeleted, 0)
+                .in(scopedProjectIds != null, Project::getId, scopedProjectIds);
+        long totalProjects = projectMapper.selectCount(projectWrapper);
         long activeProjects = projectMapper.selectCount(
-                new LambdaQueryWrapper<Project>().eq(Project::getDeleted, 0).eq(Project::getStatus, "ACTIVE"));
+                new LambdaQueryWrapper<Project>().eq(Project::getDeleted, 0)
+                        .in(scopedProjectIds != null, Project::getId, scopedProjectIds)
+                        .eq(Project::getStatus, "ACTIVE"));
         long overdueProjects = projectMapper.selectCount(
                 new LambdaQueryWrapper<Project>().eq(Project::getDeleted, 0)
-                        .eq(Project::getStatus, "ACTIVE").lt(Project::getEndDate, LocalDate.now()));
+                        .in(scopedProjectIds != null, Project::getId, scopedProjectIds)
+                        .eq(Project::getStatus, "ACTIVE")
+                        .lt(Project::getEndDate, LocalDate.now()));
 
-        LambdaQueryWrapper<Requirement> rWrapper = new LambdaQueryWrapper<Requirement>().eq(Requirement::getDeleted, 0);
-        if (projectId != null) rWrapper.eq(Requirement::getProjectId, projectId);
-        long totalReqs = requirementMapper.selectCount(rWrapper);
+        LambdaQueryWrapper<Requirement> requirementWrapper = new LambdaQueryWrapper<Requirement>()
+                .eq(Requirement::getDeleted, 0)
+                .in(scopedProjectIds != null, Requirement::getProjectId, scopedProjectIds)
+                .eq(personalView, Requirement::getAssigneeId, currentUserId);
+        long totalReqs = requirementMapper.selectCount(requirementWrapper);
         long doneReqs = requirementMapper.selectCount(
                 new LambdaQueryWrapper<Requirement>().eq(Requirement::getDeleted, 0)
-                        .eq(projectId != null, Requirement::getProjectId, projectId)
+                        .in(scopedProjectIds != null, Requirement::getProjectId, scopedProjectIds)
+                        .eq(personalView, Requirement::getAssigneeId, currentUserId)
                         .in(Requirement::getStatus, List.of("DONE", "CLOSED")));
 
-        LambdaQueryWrapper<Task> tWrapper = new LambdaQueryWrapper<Task>().eq(Task::getDeleted, 0);
-        if (projectId != null) tWrapper.eq(Task::getProjectId, projectId);
-        long totalTasks = taskMapper.selectCount(tWrapper);
+        LambdaQueryWrapper<Task> taskWrapper = new LambdaQueryWrapper<Task>()
+                .eq(Task::getDeleted, 0)
+                .in(scopedProjectIds != null, Task::getProjectId, scopedProjectIds)
+                .eq(personalView, Task::getAssigneeId, currentUserId);
+        long totalTasks = taskMapper.selectCount(taskWrapper);
         long inProgressTasks = taskMapper.selectCount(
                 new LambdaQueryWrapper<Task>().eq(Task::getDeleted, 0)
-                        .eq(projectId != null, Task::getProjectId, projectId)
+                        .in(scopedProjectIds != null, Task::getProjectId, scopedProjectIds)
+                        .eq(personalView, Task::getAssigneeId, currentUserId)
                         .eq(Task::getStatus, "IN_PROGRESS"));
         long overdueTasks = taskMapper.selectCount(
                 new LambdaQueryWrapper<Task>().eq(Task::getDeleted, 0)
-                        .eq(projectId != null, Task::getProjectId, projectId)
+                        .in(scopedProjectIds != null, Task::getProjectId, scopedProjectIds)
+                        .eq(personalView, Task::getAssigneeId, currentUserId)
                         .notIn(Task::getStatus, List.of("DONE", "CLOSED"))
                         .lt(Task::getDueDate, LocalDate.now()));
 
-        LambdaQueryWrapper<Bug> bWrapper = new LambdaQueryWrapper<Bug>().eq(Bug::getDeleted, 0);
-        if (projectId != null) bWrapper.eq(Bug::getProjectId, projectId);
-        long totalBugs = bugMapper.selectCount(bWrapper);
+        LambdaQueryWrapper<Bug> bugWrapper = new LambdaQueryWrapper<Bug>()
+                .eq(Bug::getDeleted, 0)
+                .in(scopedProjectIds != null, Bug::getProjectId, scopedProjectIds)
+                .eq(personalView, Bug::getAssigneeId, currentUserId);
+        long totalBugs = bugMapper.selectCount(bugWrapper);
         long openBugs = bugMapper.selectCount(
                 new LambdaQueryWrapper<Bug>().eq(Bug::getDeleted, 0)
-                        .eq(projectId != null, Bug::getProjectId, projectId)
+                        .in(scopedProjectIds != null, Bug::getProjectId, scopedProjectIds)
+                        .eq(personalView, Bug::getAssigneeId, currentUserId)
                         .notIn(Bug::getStatus, List.of("CLOSED", "VERIFIED")));
         long criticalOpenBugs = bugMapper.selectCount(
                 new LambdaQueryWrapper<Bug>().eq(Bug::getDeleted, 0)
-                        .eq(projectId != null, Bug::getProjectId, projectId)
+                        .in(scopedProjectIds != null, Bug::getProjectId, scopedProjectIds)
+                        .eq(personalView, Bug::getAssigneeId, currentUserId)
                         .notIn(Bug::getStatus, List.of("CLOSED", "VERIFIED"))
                         .in(Bug::getSeverity, List.of("CRITICAL", "BLOCKER")));
 
         return OverviewDTO.builder()
-                .totalProjects(totalProjects).activeProjects(activeProjects).overdueProjects(overdueProjects)
-                .totalRequirements(totalReqs).doneRequirements(doneReqs)
-                .totalTasks(totalTasks).inProgressTasks(inProgressTasks).overdueTasks(overdueTasks)
-                .totalBugs(totalBugs).openBugs(openBugs).criticalOpenBugs(criticalOpenBugs)
+                .totalProjects(totalProjects)
+                .activeProjects(activeProjects)
+                .overdueProjects(overdueProjects)
+                .totalRequirements(totalReqs)
+                .doneRequirements(doneReqs)
+                .totalTasks(totalTasks)
+                .inProgressTasks(inProgressTasks)
+                .overdueTasks(overdueTasks)
+                .totalBugs(totalBugs)
+                .openBugs(openBugs)
+                .criticalOpenBugs(criticalOpenBugs)
                 .build();
     }
 
     @Scheduled(cron = "0 5 0 * * ?")
     public void runDailyAggregation() {
-        log.info("开始执行每日看板快照聚合...");
+        log.info("Start daily dashboard aggregation");
         List<Project> projects = projectMapper.selectList(
                 new LambdaQueryWrapper<Project>().eq(Project::getDeleted, 0)
                         .in(Project::getStatus, List.of("ACTIVE")));
         for (Project project : projects) {
             try {
                 aggregateProject(project.getId());
-            } catch (Exception e) {
-                log.error("项目[{}]快照聚合失败", project.getId(), e);
+            } catch (Exception exception) {
+                log.error("Aggregate dashboard snapshot failed, projectId={}", project.getId(), exception);
             }
         }
-        log.info("每日看板快照聚合完成，共处理 {} 个项目", projects.size());
+        log.info("Finish daily dashboard aggregation, total projects={}", projects.size());
     }
 
     public void aggregateProject(Long projectId) {
-        OverviewDTO overview = getOverview(projectId);
+        OverviewDTO overview = buildOverview(new DashboardScope(Set.of(projectId), false, null));
         LocalDate today = LocalDate.now();
         try {
             String json = objectMapper.writeValueAsString(overview);
@@ -119,8 +217,11 @@ public class DashboardService {
                 snapshot.setCreatedAt(LocalDateTime.now());
                 snapshotMapper.insert(snapshot);
             }
-        } catch (Exception e) {
-            log.error("序列化快照数据失败", e);
+        } catch (Exception exception) {
+            log.error("Serialize dashboard snapshot failed", exception);
         }
+    }
+
+    private record DashboardScope(Set<Long> projectIds, boolean personalView, Long currentUserId) {
     }
 }

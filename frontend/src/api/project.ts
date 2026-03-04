@@ -12,6 +12,7 @@ export interface Project {
   startDate: string
   endDate: string
   createdAt: string
+  canEdit?: boolean
 }
 
 export interface PageResult<T> {

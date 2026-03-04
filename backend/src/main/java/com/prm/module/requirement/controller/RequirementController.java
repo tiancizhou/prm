@@ -14,6 +14,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Tag(name = "需求管理")
 @RestController
@@ -61,8 +62,11 @@ public class RequirementController {
 
     @Operation(summary = "需求状态流转")
     @PutMapping("/{id}/status")
-    public R<RequirementDTO> updateStatus(@PathVariable Long id, @RequestParam String status) {
-        return R.ok(requirementService.updateStatus(id, status));
+    public R<RequirementDTO> updateStatus(@PathVariable Long id,
+                                          @RequestParam String status,
+                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime actualStartAt,
+                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime actualEndAt) {
+        return R.ok(requirementService.updateStatus(id, status, actualStartAt, actualEndAt));
     }
 
     @Operation(summary = "添加需求评审记录")

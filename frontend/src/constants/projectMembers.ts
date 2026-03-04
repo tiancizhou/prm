@@ -34,6 +34,7 @@ export const PROJECT_MEMBERS_I18N: Record<
       selectMemberFirst: string
       added: string
       removed: string
+      noPermission: string
     }
     confirms: {
       removeMember: string
@@ -71,7 +72,8 @@ export const PROJECT_MEMBERS_I18N: Record<
     messages: {
       selectMemberFirst: '请选择成员',
       added: '添加成功',
-      removed: '已移除'
+      removed: '已移除',
+      noPermission: '无权限编辑成员'
     },
     confirms: {
       removeMember: '确定移除成员「{name}」？'
@@ -108,11 +110,11 @@ export const PROJECT_MEMBERS_I18N: Record<
     messages: {
       selectMemberFirst: 'Please select a member',
       added: 'Added successfully',
-      removed: 'Removed'
+      removed: 'Removed',
+      noPermission: 'You do not have permission to edit members'
     },
     confirms: {
       removeMember: 'Remove member "{name}"?'
     }
   }
 }
-

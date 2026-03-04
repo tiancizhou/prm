@@ -6,6 +6,8 @@ import com.prm.module.attachment.dto.AttachmentDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.prm.module.attachment.entity.Attachment;
 import com.prm.module.attachment.mapper.AttachmentMapper;
+import com.prm.module.project.entity.ProjectMember;
+import com.prm.module.project.mapper.ProjectMemberMapper;
 import com.prm.module.requirement.entity.Requirement;
 import com.prm.module.requirement.mapper.RequirementMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class AttachmentService {
 
     private final AttachmentMapper attachmentMapper;
     private final RequirementMapper requirementMapper;
+    private final ProjectMemberMapper projectMemberMapper;
 
     @Value("${prm.upload.path:${user.home}/prm-uploads}")
     private String uploadBasePath;
@@ -48,14 +51,26 @@ public class AttachmentService {
     private void ensureCanAccessRequirement(Long requirementId) {
         Requirement req = requirementMapper.selectById(requirementId);
         if (req == null || req.getDeleted() == 1) throw BizException.notFound("需求");
-        if (SecurityUtil.isManager()) return;
-        if (req.getAssigneeId() == null || !req.getAssigneeId().equals(SecurityUtil.getCurrentUserId())) {
+        if (SecurityUtil.isSuperAdmin()) return;
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        ProjectMember membership = projectMemberMapper.selectOne(new LambdaQueryWrapper<ProjectMember>()
+                .eq(ProjectMember::getProjectId, req.getProjectId())
+                .eq(ProjectMember::getUserId, currentUserId));
+        if (membership == null) {
+            throw BizException.forbidden("无权访问该需求的附件");
+        }
+        if ("PROJECT_ADMIN".equalsIgnoreCase(membership.getRole())) {
+            return;
+        }
+        if (req.getAssigneeId() == null || !req.getAssigneeId().equals(currentUserId)) {
             throw BizException.forbidden("无权访问该需求的附件");
         }
     }
 
     @Transactional
     public AttachmentDTO uploadForRequirement(Long requirementId, MultipartFile file) {
+        ensureCanAccessRequirement(requirementId);
         if (file == null || file.isEmpty()) {
             throw BizException.of("请选择要上传的文件");
         }
@@ -108,6 +123,7 @@ public class AttachmentService {
 
     @Transactional
     public void delete(Long requirementId, Long attachmentId) {
+        ensureCanAccessRequirement(requirementId);
         Attachment att = attachmentMapper.selectById(attachmentId);
         if (att == null || att.getDeleted() == 1) throw BizException.notFound("附件");
         if (!BIZ_REQUIREMENT.equals(att.getBizType()) || !requirementId.equals(att.getBizId())) {

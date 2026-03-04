@@ -264,11 +264,13 @@ onMounted(loadOverview)
 }
 
 @media (max-width: 1365px) {
-  .metrics-grid {
+  .insight-grid {
     grid-template-columns: 1fr;
   }
+}
 
-  .insight-grid {
+@media (max-width: 1199px) {
+  .metrics-grid {
     grid-template-columns: 1fr;
   }
 }

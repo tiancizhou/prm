@@ -49,7 +49,7 @@
             <el-icon><Calendar /></el-icon>
             <template #title>{{ layoutText.routeLabels.Sprints }}</template>
           </el-menu-item>
-          <el-menu-item :index="`/projects/${currentProject.id}/members`">
+          <el-menu-item v-if="canManageCurrentProjectMembers" :index="`/projects/${currentProject.id}/members`">
             <el-icon><User /></el-icon>
             <template #title>{{ layoutText.routeLabels.ProjectMembers }}</template>
           </el-menu-item>
@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -157,10 +157,12 @@ const projectStore = useProjectStore()
 
 const themeMessageDuration = 1200
 const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)')
+const compactLayoutMedia = window.matchMedia('(max-width: 1365px)')
 
-const collapsed = ref(false)
+const collapsed = ref(compactLayoutMedia.matches)
 const activeMenu = computed(() => route.path)
 const currentProject = computed(() => projectStore.currentProject)
+const canManageCurrentProjectMembers = computed(() => currentProject.value?.canEdit === true)
 const isSuperAdmin = computed(() => authStore.user?.roles?.includes('SUPER_ADMIN'))
 const themeMode = ref<ThemeMode>(resolveThemeMode())
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
@@ -187,6 +189,19 @@ const themeIconName = computed(() => {
 const routeNameLabelMap: Record<string, string> = layoutText.routeLabels
 
 const currentRouteLabel = computed(() => routeNameLabelMap[String(route.name ?? '')] ?? '')
+
+function handleCompactLayoutChange(event: MediaQueryListEvent) {
+  collapsed.value = event.matches
+}
+
+onMounted(() => {
+  collapsed.value = compactLayoutMedia.matches
+  compactLayoutMedia.addEventListener('change', handleCompactLayoutChange)
+})
+
+onBeforeUnmount(() => {
+  compactLayoutMedia.removeEventListener('change', handleCompactLayoutChange)
+})
 
 function toggleSidebar() {
   collapsed.value = !collapsed.value
@@ -336,6 +351,7 @@ async function handleCommand(command: string) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-md);
   padding: 0 var(--space-xl);
   border-bottom: 1px solid var(--app-border-soft);
   background: var(--app-layout-header-bg);
@@ -346,10 +362,11 @@ async function handleCommand(command: string) {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
+  min-width: 0;
 }
 
 .header-right {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-sm);
   flex-wrap: wrap;
@@ -449,12 +466,24 @@ async function handleCommand(command: string) {
 
 @media (max-width: 1439px) {
   .layout-header {
-    height: 68px;
+    height: auto;
+    min-height: 68px;
     padding: 0 var(--space-md);
+    padding-top: var(--space-sm);
+    padding-bottom: var(--space-sm);
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: var(--space-sm);
   }
 
   .header-left {
     gap: var(--space-md);
+    width: 100%;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .project-pill {
@@ -471,20 +500,13 @@ async function handleCommand(command: string) {
 }
 
 @media (max-width: 1365px) {
-  .layout-header {
-    height: auto;
-    min-height: 68px;
-    padding-top: var(--space-sm);
-    padding-bottom: var(--space-sm);
-  }
-
   .header-left,
   .header-right {
     width: 100%;
   }
 
   .header-right {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .project-pill {
@@ -504,7 +526,7 @@ async function handleCommand(command: string) {
   }
 
   .username {
-    max-width: 92px;
+    display: none;
   }
 }
 </style>
