@@ -113,6 +113,29 @@ class RequirementControllerDateTimeParsingTests {
     }
 
     @Test
+    void updateStatusShouldParseUtcZuluDateTimeWithoutConversion() throws Exception {
+        Long requirementId = 9005L;
+        LocalDateTime start = LocalDateTime.of(2026, 3, 4, 1, 15);
+        LocalDateTime end = LocalDateTime.of(2026, 3, 4, 3, 45);
+
+        RequirementDTO dto = new RequirementDTO();
+        dto.setId(requirementId);
+        dto.setStatus("DONE");
+        when(requirementService.updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end))).thenReturn(dto);
+
+        mockMvc.perform(put("/api/requirements/{id}/status", requirementId)
+                        .param("status", "DONE")
+                        .param("actualStartAt", "2026-03-04T01:15:00Z")
+                        .param("actualEndAt", "2026-03-04T03:45:00Z")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(9005));
+
+        verify(requirementService).updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end));
+    }
+
+    @Test
     void updateStatusShouldRejectInvalidDateTimeFormat() throws Exception {
         mockMvc.perform(put("/api/requirements/{id}/status", 9003L)
                         .param("status", "DONE")
