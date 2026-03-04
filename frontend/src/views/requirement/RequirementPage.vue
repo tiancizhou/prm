@@ -85,6 +85,7 @@
       <el-select
         v-model="filterSprintId"
         :placeholder="requirementText.placeholders.sprint"
+        :disabled="quickView === 'unscheduled'"
         clearable
         class="filter-select"
         @change="load"
@@ -253,7 +254,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column :label="requirementText.tableHeaders.actions" width="220" fixed="right" align="right">
+        <el-table-column :label="requirementText.tableHeaders.actions" width="260" fixed="right" align="right">
           <template #default="{ row }">
             <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openDetail(row)">
               {{ requirementText.buttons.view }}
@@ -265,7 +266,7 @@
               {{ requirementText.buttons.decompose }}
             </el-button>
             <el-dropdown v-if="canEditRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
-              <el-button size="small" link>{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
+              <el-button size="small" link type="primary" class="action-status-btn">{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item v-for="opt in nextStatusOptions(row)" :key="opt.command" :command="opt.command">
@@ -282,12 +283,12 @@
       <!-- Pagination -->
       <div class="pagination-wrap">
         <span class="pagination-summary">
-          {{ requirementText.pagination.showing }} {{ rangeStart }}{{ requirementText.pagination.to }}{{ rangeEnd }} {{ requirementText.pagination.of }} {{ total }} {{ requirementText.pagination.items }}
+          {{ requirementText.pagination.showing }} {{ rangeStart }}{{ requirementText.pagination.to }}{{ rangeEnd }} {{ requirementText.pagination.of }} {{ paginationTotal }} {{ requirementText.pagination.items }}
         </span>
         <el-pagination
           v-model:current-page="query.page"
           v-model:page-size="query.size"
-          :total="total"
+          :total="paginationTotal"
           :page-sizes="[10, 20, 50, 100]"
           layout="sizes, prev, pager, next"
           small
@@ -599,6 +600,43 @@ const query = reactive({
   unscheduled: false
 })
 
+function toLocalDateText(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function getCurrentWeekDateRange() {
+  const now = new Date()
+  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - dayOfWeek + 1)
+  monday.setHours(0, 0, 0, 0)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  return {
+    monday,
+    sunday,
+    fromText: toLocalDateText(monday),
+    toText: toLocalDateText(sunday)
+  }
+}
+
+function parseDateOnly(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const text = String(value).slice(0, 10)
+  const parts = text.split('-').map(Number)
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null
+  const [year, month, day] = parts
+  if (!year || !month || !day) return null
+  const date = new Date(year, month - 1, day)
+  if (Number.isNaN(date.getTime())) return null
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
 // Build API params from filters
 function buildParams() {
   const status = filterStatuses.value.length === 1 ? filterStatuses.value[0] : filterStatuses.value.length > 1 ? undefined : query.status
@@ -607,15 +645,9 @@ function buildParams() {
   let dueDateFrom: string | undefined
   let dueDateTo: string | undefined
   if (quickView.value === 'due_week') {
-    const now = new Date()
-    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - dayOfWeek + 1)
-    monday.setHours(0, 0, 0, 0)
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    dueDateFrom = monday.toISOString().slice(0, 10)
-    dueDateTo   = sunday.toISOString().slice(0, 10)
+    const weekRange = getCurrentWeekDateRange()
+    dueDateFrom = weekRange.fromText
+    dueDateTo = weekRange.toText
   }
 
   return {
@@ -633,6 +665,13 @@ function buildParams() {
 }
 
 function setQuickView(v: QuickView) {
+  if (v === 'assigned' && !currentUserId.value) {
+    ElMessage.warning(requirementText.messages.noEditPermission)
+    return
+  }
+  if (v === 'unscheduled') {
+    filterSprintId.value = null
+  }
   quickView.value = v
   query.page = 1
   load()
@@ -677,6 +716,24 @@ const taskCountMap = reactive<Record<number, number>>({})
 // When multiple statuses selected, filter client-side (API only supports single status)
 const displayList = computed(() => {
   let rows = list.value
+
+  if (quickView.value === 'assigned' && currentUserId.value != null) {
+    rows = rows.filter(r => r.assigneeId != null && r.assigneeId === currentUserId.value)
+  }
+
+  if (quickView.value === 'unscheduled') {
+    rows = rows.filter(r => r.sprintId == null)
+  }
+
+  if (quickView.value === 'due_week') {
+    const { monday, sunday } = getCurrentWeekDateRange()
+    rows = rows.filter(r => {
+      const dueDate = parseDateOnly(r?.dueDate)
+      if (!dueDate) return false
+      return dueDate.getTime() >= monday.getTime() && dueDate.getTime() <= sunday.getTime()
+    })
+  }
+
   if (filterStatuses.value.length > 1) {
     const set = new Set(filterStatuses.value)
     rows = rows.filter(r => set.has(r.status))
@@ -688,8 +745,13 @@ const displayList = computed(() => {
   return rows
 })
 
-const rangeStart = computed(() => total.value === 0 ? 0 : (query.page - 1) * query.size + 1)
-const rangeEnd = computed(() => Math.min(query.page * query.size, total.value))
+const paginationTotal = computed(() => {
+  if (total.value >= list.value.length) return total.value
+  return list.value.length
+})
+
+const rangeStart = computed(() => paginationTotal.value === 0 ? 0 : (query.page - 1) * query.size + 1)
+const rangeEnd = computed(() => Math.min(query.page * query.size, paginationTotal.value))
 
 // Selection for bulk actions
 const selectedRows = ref<any[]>([])
@@ -772,9 +834,9 @@ async function downloadAttachment(att: any) {
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return ''
-  const date = new Date(d)
-  if (isNaN(date.getTime())) return d
-  return date.toISOString().slice(0, 10)
+  const date = parseDateOnly(d)
+  if (!date) return d
+  return toLocalDateText(date)
 }
 
 function formatDateTime(d: string | null | undefined): string {
@@ -878,7 +940,11 @@ async function load() {
     const res = await requirementApi.list(params)
     const data = (res as any).data
     list.value = data.records || []
-    total.value = data.total ?? 0
+    const parsedTotal = Number(data.total)
+    total.value = Number.isFinite(parsedTotal) ? parsedTotal : 0
+    if (total.value < list.value.length) {
+      total.value = list.value.length
+    }
     list.value.forEach((req: any) => loadTaskCount(req.id))
   } finally {
     loading.value = false
@@ -1493,6 +1559,10 @@ onMounted(() => {
 .readonly-hint {
   font-size: 12px;
   color: var(--app-text-muted);
+}
+
+.action-status-btn :deep(.el-icon) {
+  margin-left: 2px;
 }
 
 .pagination-wrap {
