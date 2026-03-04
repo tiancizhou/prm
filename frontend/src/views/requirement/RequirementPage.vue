@@ -611,6 +611,8 @@ function toLocalDateText(date: Date): string {
 
 function getCurrentWeekDateRange() {
   const now = new Date()
+  const today = new Date(now)
+  today.setHours(0, 0, 0, 0)
   const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
   const monday = new Date(now)
   monday.setDate(now.getDate() - dayOfWeek + 1)
@@ -619,9 +621,10 @@ function getCurrentWeekDateRange() {
   sunday.setDate(monday.getDate() + 6)
   sunday.setHours(23, 59, 59, 999)
   return {
+    today,
     monday,
     sunday,
-    fromText: toLocalDateText(monday),
+    fromText: toLocalDateText(today),
     toText: toLocalDateText(sunday)
   }
 }
@@ -643,7 +646,7 @@ function parseDateOnly(value: string | null | undefined): Date | null {
 function buildParams() {
   const status = filterStatuses.value.length === 1 ? filterStatuses.value[0] : filterStatuses.value.length > 1 ? undefined : query.status
 
-  // Due this week: Monday to Sunday
+  // Due this week: today to Sunday
   let dueDateFrom: string | undefined
   let dueDateTo: string | undefined
   if (quickView.value === 'due_week') {
@@ -724,15 +727,15 @@ const displayList = computed(() => {
   }
 
   if (quickView.value === 'unscheduled') {
-    rows = rows.filter(r => r.sprintId == null)
+    rows = rows.filter(r => r.sprintId == null && !parseDateOnly(r?.startDate) && !parseDateOnly(r?.dueDate))
   }
 
   if (quickView.value === 'due_week') {
-    const { monday, sunday } = getCurrentWeekDateRange()
+    const { today, sunday } = getCurrentWeekDateRange()
     rows = rows.filter(r => {
       const dueDate = parseDateOnly(r?.dueDate)
       if (!dueDate) return false
-      return dueDate.getTime() >= monday.getTime() && dueDate.getTime() <= sunday.getTime()
+      return dueDate.getTime() >= today.getTime() && dueDate.getTime() <= sunday.getTime()
     })
   }
 

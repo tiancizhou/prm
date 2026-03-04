@@ -102,7 +102,12 @@ public class RequirementService {
         if (StringUtils.hasText(status)) wrapper.eq(Requirement::getStatus, status);
         if (StringUtils.hasText(keyword)) wrapper.like(Requirement::getTitle, keyword);
         if (assigneeId != null) wrapper.eq(Requirement::getAssigneeId, assigneeId);
-        if (Boolean.TRUE.equals(unscheduled)) wrapper.and(w -> w.isNull(Requirement::getSprintId));
+        if (Boolean.TRUE.equals(unscheduled)) {
+            wrapper.and(w -> w
+                    .isNull(Requirement::getSprintId)
+                    .isNull(Requirement::getStartDate)
+                    .isNull(Requirement::getDueDate));
+        }
         else if (sprintId != null) wrapper.eq(Requirement::getSprintId, sprintId);
         if (dueDateFrom != null) wrapper.ge(Requirement::getDueDate, dueDateFrom);
         if (dueDateTo != null)   wrapper.le(Requirement::getDueDate, dueDateTo);
