@@ -18,13 +18,13 @@ class RequirementStateMachineTests {
     }
 
     @Test
-    void draftShouldTransitToReviewing() {
-        assertThat(machine.canTransit("DRAFT", "REVIEWING")).isTrue();
+    void draftShouldTransitToInProgress() {
+        assertThat(machine.canTransit("DRAFT", "IN_PROGRESS")).isTrue();
     }
 
     @Test
-    void reviewingShouldTransitToApproved() {
-        assertThat(machine.canTransit("REVIEWING", "APPROVED")).isTrue();
+    void reviewingShouldTransitToInProgress() {
+        assertThat(machine.canTransit("REVIEWING", "IN_PROGRESS")).isTrue();
     }
 
     @Test
@@ -33,8 +33,8 @@ class RequirementStateMachineTests {
     }
 
     @Test
-    void closedCanReopenToDraft() {
-        assertThat(machine.canTransit("CLOSED", "DRAFT")).isTrue();
+    void closedCanReopenToInProgress() {
+        assertThat(machine.canTransit("CLOSED", "IN_PROGRESS")).isTrue();
     }
 
     @Test
