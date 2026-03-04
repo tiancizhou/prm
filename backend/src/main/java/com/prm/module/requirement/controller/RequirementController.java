@@ -77,11 +77,25 @@ public class RequirementController {
     public R<RequirementDTO> updateStatus(@PathVariable Long id,
                                           @RequestParam String status,
                                           @RequestParam(required = false) String actualStartAt,
-                                          @RequestParam(required = false) String actualEndAt) {
+                                          @RequestParam(required = false) String actualEndAt,
+                                          @RequestParam(required = false) String verificationScenario,
+                                          @RequestParam(required = false) String verificationSteps,
+                                          @RequestParam(required = false) String verificationResult,
+                                          @RequestParam(required = false) String verificationConclusion,
+                                          @RequestParam(required = false) String verificationMethod) {
         LocalDateTime resolvedActualStartAt = parseDateTimeParameter(actualStartAt, "actualStartAt");
         LocalDateTime resolvedActualEndAt = parseDateTimeParameter(actualEndAt, "actualEndAt");
 
-        return R.ok(requirementService.updateStatus(id, status, resolvedActualStartAt, resolvedActualEndAt));
+        return R.ok(requirementService.updateStatus(
+                id,
+                status,
+                resolvedActualStartAt,
+                resolvedActualEndAt,
+                verificationScenario,
+                verificationSteps,
+                verificationResult,
+                verificationConclusion,
+                verificationMethod));
     }
 
     private LocalDateTime parseDateTimeParameter(String text, String fieldName) {

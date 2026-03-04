@@ -1,14 +1,29 @@
 import http from './http'
 
+export interface RequirementDoneVerificationPayload {
+  actualStartAt?: string
+  actualEndAt?: string
+  verificationScenario?: string
+  verificationSteps?: string
+  verificationResult?: string
+  verificationConclusion?: string
+  verificationMethod?: string
+}
+
 export const requirementApi = {
   list: (params?: any) => http.get('/requirements', { params }),
   get: (id: number) => http.get(`/requirements/${id}`),
   create: (data: any) => http.post('/requirements', data),
   update: (id: number, data: any) => http.put(`/requirements/${id}`, data),
-  updateStatus: (id: number, status: string, actualStartAt?: string, actualEndAt?: string) => {
+  updateStatus: (id: number, status: string, payload?: RequirementDoneVerificationPayload) => {
     const params: Record<string, string | number | boolean> = { status }
-    if (actualStartAt) params.actualStartAt = actualStartAt
-    if (actualEndAt) params.actualEndAt = actualEndAt
+    if (payload?.actualStartAt) params.actualStartAt = payload.actualStartAt
+    if (payload?.actualEndAt) params.actualEndAt = payload.actualEndAt
+    if (payload?.verificationScenario) params.verificationScenario = payload.verificationScenario
+    if (payload?.verificationSteps) params.verificationSteps = payload.verificationSteps
+    if (payload?.verificationResult) params.verificationResult = payload.verificationResult
+    if (payload?.verificationConclusion) params.verificationConclusion = payload.verificationConclusion
+    if (payload?.verificationMethod) params.verificationMethod = payload.verificationMethod
     return http.put(`/requirements/${id}/status`, null, { params })
   },
   addReview: (id: number, conclusion: string, remark?: string) =>

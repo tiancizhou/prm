@@ -467,6 +467,11 @@
           <el-descriptions-item :label="requirementText.formLabels.dueDate">{{ formatDate(detailReq.dueDate) || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="requirementText.formLabels.description" :span="2">{{ detailReq.description || requirementText.detail.noneSymbol }}</el-descriptions-item>
           <el-descriptions-item :label="requirementText.formLabels.acceptanceCriteria" :span="2">{{ detailReq.acceptanceCriteria || requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="doneVerificationText.scenarioLabel" :span="2">{{ detailReq.verificationScenario || requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="doneVerificationText.stepsLabel" :span="2">{{ detailReq.verificationSteps || requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="doneVerificationText.resultLabel" :span="2">{{ detailReq.verificationResult || requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="doneVerificationText.conclusionLabel" :span="2">{{ detailReq.verificationConclusion || requirementText.detail.noneSymbol }}</el-descriptions-item>
+          <el-descriptions-item :label="doneVerificationText.methodLabel" :span="2">{{ detailReq.verificationMethod || requirementText.detail.noneSymbol }}</el-descriptions-item>
         </el-descriptions>
         <div class="detail-section">
           <div class="detail-section-title">{{ requirementText.detail.attachments }}</div>
@@ -507,6 +512,21 @@
             :placeholder="requirementText.placeholders.doneEndAt"
             class="full-width-control"
           />
+        </el-form-item>
+        <el-form-item :label="doneVerificationText.scenarioLabel" required>
+          <el-input v-model="doneStatusForm.verificationScenario" type="textarea" :rows="2" :placeholder="doneVerificationText.scenarioPlaceholder" />
+        </el-form-item>
+        <el-form-item :label="doneVerificationText.stepsLabel" required>
+          <el-input v-model="doneStatusForm.verificationSteps" type="textarea" :rows="3" :placeholder="doneVerificationText.stepsPlaceholder" />
+        </el-form-item>
+        <el-form-item :label="doneVerificationText.resultLabel" required>
+          <el-input v-model="doneStatusForm.verificationResult" type="textarea" :rows="2" :placeholder="doneVerificationText.resultPlaceholder" />
+        </el-form-item>
+        <el-form-item :label="doneVerificationText.conclusionLabel" required>
+          <el-input v-model="doneStatusForm.verificationConclusion" :placeholder="doneVerificationText.conclusionPlaceholder" />
+        </el-form-item>
+        <el-form-item :label="doneVerificationText.methodLabel">
+          <el-input v-model="doneStatusForm.verificationMethod" :placeholder="doneVerificationText.methodPlaceholder" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -570,6 +590,33 @@ const projectId = Number(route.params.id)
 const currentUserId = computed(() => authStore.user?.userId ?? null)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const requirementText = REQUIREMENT_I18N[currentLocale]
+const doneVerificationText = currentLocale === 'zh-CN'
+  ? {
+      scenarioLabel: '验证场景',
+      stepsLabel: '验证步骤',
+      resultLabel: '实际结果',
+      conclusionLabel: '结论',
+      methodLabel: '验证方式（可选）',
+      scenarioPlaceholder: '例：登录后创建需求并指派成员',
+      stepsPlaceholder: '至少填写 1 条步骤，例如：1. 创建需求 2. 指派成员',
+      resultPlaceholder: '例：页面保存成功，列表展示正确',
+      conclusionPlaceholder: '例：通过',
+      methodPlaceholder: '例：自测/联调/回归',
+      requiredMessage: '完成需求时请补全验证结果模板'
+    }
+  : {
+      scenarioLabel: 'Verification Scenario',
+      stepsLabel: 'Verification Steps',
+      resultLabel: 'Actual Result',
+      conclusionLabel: 'Conclusion',
+      methodLabel: 'Verification Method (Optional)',
+      scenarioPlaceholder: 'e.g. Create requirement and assign member after login',
+      stepsPlaceholder: 'At least 1 step, e.g. 1) Create requirement 2) Assign member',
+      resultPlaceholder: 'e.g. Save succeeds and list displays correctly',
+      conclusionPlaceholder: 'e.g. Pass',
+      methodPlaceholder: 'e.g. Self-test / Joint test / Regression',
+      requiredMessage: 'Please complete the verification template when marking done'
+    }
 
 const canManageProject = computed(() => {
   const currentProject = projectStore.currentProject
@@ -942,7 +989,12 @@ const doneStatusSubmitting = ref(false)
 const doneStatusTarget = ref<any>(null)
 const doneStatusForm = reactive({
   actualStartAt: '',
-  actualEndAt: ''
+  actualEndAt: '',
+  verificationScenario: '',
+  verificationSteps: '',
+  verificationResult: '',
+  verificationConclusion: '',
+  verificationMethod: ''
 })
 
 async function load() {
@@ -1191,6 +1243,11 @@ function openDoneStatusDialog(row: any) {
   doneStatusTarget.value = row
   doneStatusForm.actualStartAt = ''
   doneStatusForm.actualEndAt = ''
+  doneStatusForm.verificationScenario = ''
+  doneStatusForm.verificationSteps = ''
+  doneStatusForm.verificationResult = ''
+  doneStatusForm.verificationConclusion = ''
+  doneStatusForm.verificationMethod = ''
   showDoneStatusDialog.value = true
 }
 
@@ -1199,6 +1256,11 @@ function closeDoneStatusDialog() {
   doneStatusTarget.value = null
   doneStatusForm.actualStartAt = ''
   doneStatusForm.actualEndAt = ''
+  doneStatusForm.verificationScenario = ''
+  doneStatusForm.verificationSteps = ''
+  doneStatusForm.verificationResult = ''
+  doneStatusForm.verificationConclusion = ''
+  doneStatusForm.verificationMethod = ''
 }
 
 async function submitDoneStatus() {
@@ -1207,6 +1269,14 @@ async function submitDoneStatus() {
   }
   if (!doneStatusForm.actualStartAt || !doneStatusForm.actualEndAt) {
     ElMessage.warning(requirementText.messages.doneTimeRequired)
+    return
+  }
+
+  if (!doneStatusForm.verificationScenario.trim()
+    || !doneStatusForm.verificationSteps.trim()
+    || !doneStatusForm.verificationResult.trim()
+    || !doneStatusForm.verificationConclusion.trim()) {
+    ElMessage.warning(doneVerificationText.requiredMessage)
     return
   }
 
@@ -1219,12 +1289,15 @@ async function submitDoneStatus() {
 
   doneStatusSubmitting.value = true
   try {
-    await requirementApi.updateStatus(
-      doneStatusTarget.value.id,
-      'DONE',
-      doneStatusForm.actualStartAt,
-      doneStatusForm.actualEndAt
-    )
+    await requirementApi.updateStatus(doneStatusTarget.value.id, 'DONE', {
+      actualStartAt: doneStatusForm.actualStartAt,
+      actualEndAt: doneStatusForm.actualEndAt,
+      verificationScenario: doneStatusForm.verificationScenario.trim(),
+      verificationSteps: doneStatusForm.verificationSteps.trim(),
+      verificationResult: doneStatusForm.verificationResult.trim(),
+      verificationConclusion: doneStatusForm.verificationConclusion.trim(),
+      verificationMethod: doneStatusForm.verificationMethod.trim()
+    })
     ElMessage.success(requirementText.messages.statusUpdated)
     closeDoneStatusDialog()
     await load()

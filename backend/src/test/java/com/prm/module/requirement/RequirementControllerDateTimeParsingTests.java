@@ -52,18 +52,41 @@ class RequirementControllerDateTimeParsingTests {
         RequirementDTO dto = new RequirementDTO();
         dto.setId(requirementId);
         dto.setStatus("DONE");
-        when(requirementService.updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end))).thenReturn(dto);
+        when(requirementService.updateStatus(
+                eq(requirementId),
+                eq("DONE"),
+                eq(start),
+                eq(end),
+                eq("核心流程回归"),
+                eq("执行主流程并检查输出"),
+                eq("输出符合预期"),
+                eq("通过"),
+                eq("自测"))).thenReturn(dto);
 
         mockMvc.perform(put("/api/requirements/{id}/status", requirementId)
                         .param("status", "DONE")
                         .param("actualStartAt", "2026-03-04T09:15")
                         .param("actualEndAt", "2026-03-04T11:45")
+                        .param("verificationScenario", "核心流程回归")
+                        .param("verificationSteps", "执行主流程并检查输出")
+                        .param("verificationResult", "输出符合预期")
+                        .param("verificationConclusion", "通过")
+                        .param("verificationMethod", "自测")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.id").value(9001));
 
-        verify(requirementService).updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end));
+        verify(requirementService).updateStatus(
+                eq(requirementId),
+                eq("DONE"),
+                eq(start),
+                eq(end),
+                eq("核心流程回归"),
+                eq("执行主流程并检查输出"),
+                eq("输出符合预期"),
+                eq("通过"),
+                eq("自测"));
     }
 
     @Test
@@ -75,18 +98,41 @@ class RequirementControllerDateTimeParsingTests {
         RequirementDTO dto = new RequirementDTO();
         dto.setId(requirementId);
         dto.setStatus("DONE");
-        when(requirementService.updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end))).thenReturn(dto);
+        when(requirementService.updateStatus(
+                eq(requirementId),
+                eq("DONE"),
+                eq(start),
+                eq(end),
+                eq("核心流程回归"),
+                eq("执行主流程并检查输出"),
+                eq("输出符合预期"),
+                eq("通过"),
+                eq("联调"))).thenReturn(dto);
 
         mockMvc.perform(put("/api/requirements/{id}/status", requirementId)
                         .param("status", "DONE")
                         .param("actualStartAt", "2026-03-04 09:15")
                         .param("actualEndAt", "2026-03-04 11:45:30")
+                        .param("verificationScenario", "核心流程回归")
+                        .param("verificationSteps", "执行主流程并检查输出")
+                        .param("verificationResult", "输出符合预期")
+                        .param("verificationConclusion", "通过")
+                        .param("verificationMethod", "联调")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.id").value(9002));
 
-        verify(requirementService).updateStatus(eq(requirementId), eq("DONE"), eq(start), eq(end));
+        verify(requirementService).updateStatus(
+                eq(requirementId),
+                eq("DONE"),
+                eq(start),
+                eq(end),
+                eq("核心流程回归"),
+                eq("执行主流程并检查输出"),
+                eq("输出符合预期"),
+                eq("通过"),
+                eq("联调"));
     }
 
     @Test
@@ -101,7 +147,7 @@ class RequirementControllerDateTimeParsingTests {
                 .andExpect(jsonPath("$.msg", containsString("actualStartAt")))
                 .andExpect(jsonPath("$.msg", containsString("时区")));
 
-        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any());
+        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -116,7 +162,7 @@ class RequirementControllerDateTimeParsingTests {
                 .andExpect(jsonPath("$.msg", containsString("actualStartAt")))
                 .andExpect(jsonPath("$.msg", containsString("时区")));
 
-        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any());
+        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -130,6 +176,6 @@ class RequirementControllerDateTimeParsingTests {
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.msg", containsString("actualStartAt")));
 
-        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any());
+        verify(requirementService, never()).updateStatus(anyLong(), anyString(), any(), any(), any(), any(), any(), any(), any());
     }
 }

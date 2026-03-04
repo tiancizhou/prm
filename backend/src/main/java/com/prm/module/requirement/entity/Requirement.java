@@ -26,6 +26,11 @@ public class Requirement {
     private BigDecimal actualHours;
     private LocalDateTime actualStartAt;
     private LocalDateTime actualEndAt;
+    private String verificationScenario;
+    private String verificationSteps;
+    private String verificationResult;
+    private String verificationConclusion;
+    private String verificationMethod;
     private String acceptanceCriteria;
     private LocalDate startDate;
     private LocalDate dueDate;

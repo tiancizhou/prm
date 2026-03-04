@@ -174,7 +174,15 @@ public class RequirementService {
     }
 
     @Transactional
-    public RequirementDTO updateStatus(Long id, String newStatus, LocalDateTime actualStartAt, LocalDateTime actualEndAt) {
+    public RequirementDTO updateStatus(Long id,
+                                       String newStatus,
+                                       LocalDateTime actualStartAt,
+                                       LocalDateTime actualEndAt,
+                                       String verificationScenario,
+                                       String verificationSteps,
+                                       String verificationResult,
+                                       String verificationConclusion,
+                                       String verificationMethod) {
         Requirement r = requirementMapper.selectById(id);
         if (r == null) throw BizException.notFound("需求");
         ensureRequirementEditable(r);
@@ -182,9 +190,19 @@ public class RequirementService {
 
         if ("DONE".equalsIgnoreCase(newStatus)) {
             BigDecimal resolvedActualHours = resolveDoneActualHours(actualStartAt, actualEndAt);
+            String resolvedVerificationScenario = requireDoneVerificationField(verificationScenario, "验证场景");
+            String resolvedVerificationSteps = requireDoneVerificationField(verificationSteps, "验证步骤");
+            String resolvedVerificationResult = requireDoneVerificationField(verificationResult, "实际结果");
+            String resolvedVerificationConclusion = requireDoneVerificationField(verificationConclusion, "结论");
+
             r.setActualStartAt(actualStartAt);
             r.setActualEndAt(actualEndAt);
             r.setActualHours(resolvedActualHours);
+            r.setVerificationScenario(resolvedVerificationScenario);
+            r.setVerificationSteps(resolvedVerificationSteps);
+            r.setVerificationResult(resolvedVerificationResult);
+            r.setVerificationConclusion(resolvedVerificationConclusion);
+            r.setVerificationMethod(StringUtils.hasText(verificationMethod) ? verificationMethod.trim() : null);
         } else {
             r.setActualStartAt(null);
             r.setActualEndAt(null);
@@ -233,6 +251,11 @@ public class RequirementService {
         dto.setActualHours(r.getActualHours());
         dto.setActualStartAt(r.getActualStartAt());
         dto.setActualEndAt(r.getActualEndAt());
+        dto.setVerificationScenario(r.getVerificationScenario());
+        dto.setVerificationSteps(r.getVerificationSteps());
+        dto.setVerificationResult(r.getVerificationResult());
+        dto.setVerificationConclusion(r.getVerificationConclusion());
+        dto.setVerificationMethod(r.getVerificationMethod());
         dto.setAcceptanceCriteria(r.getAcceptanceCriteria());
         dto.setStartDate(r.getStartDate());
         dto.setDueDate(r.getDueDate());
@@ -311,5 +334,12 @@ public class RequirementService {
 
         return BigDecimal.valueOf(minutes)
                 .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+    }
+
+    private String requireDoneVerificationField(String value, String fieldLabel) {
+        if (!StringUtils.hasText(value)) {
+            throw BizException.of("完成需求时必须填写" + fieldLabel);
+        }
+        return value.trim();
     }
 }

@@ -126,7 +126,12 @@ class RequirementServicePermissionTests {
                     9001L,
                     "DONE",
                     LocalDateTime.of(2026, 3, 1, 9, 0),
-                    LocalDateTime.of(2026, 3, 1, 15, 30)))
+                    LocalDateTime.of(2026, 3, 1, 15, 30),
+                    "核心流程回归",
+                    "执行主流程并检查输出",
+                    "输出符合预期",
+                    "通过",
+                    "自测"))
                     .doesNotThrowAnyException();
 
             verify(requirementMapper).updateById(any(Requirement.class));
@@ -144,9 +149,44 @@ class RequirementServicePermissionTests {
             when(requirementMapper.selectById(9001L)).thenReturn(requirement);
             when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 2001L, "DEV"));
 
-            assertThatThrownBy(() -> requirementService.updateStatus(9001L, "DONE", null, null))
+            assertThatThrownBy(() -> requirementService.updateStatus(
+                    9001L,
+                    "DONE",
+                    null,
+                    null,
+                    "核心流程回归",
+                    "执行主流程并检查输出",
+                    "输出符合预期",
+                    "通过",
+                    "自测"))
                     .isInstanceOf(BizException.class)
                     .hasMessageContaining("时间");
+        }
+    }
+
+    @Test
+    void doneWithoutVerificationSummaryShouldFail() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
+
+            Requirement requirement = requirement(9001L, 1001L, 2001L);
+            requirement.setStatus("IN_PROGRESS");
+            when(requirementMapper.selectById(9001L)).thenReturn(requirement);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 2001L, "DEV"));
+
+            assertThatThrownBy(() -> requirementService.updateStatus(
+                    9001L,
+                    "DONE",
+                    LocalDateTime.of(2026, 3, 2, 9, 15),
+                    LocalDateTime.of(2026, 3, 2, 11, 45),
+                    "",
+                    "执行主流程并检查输出",
+                    "输出符合预期",
+                    "通过",
+                    null))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("验证场景");
         }
     }
 
@@ -165,7 +205,12 @@ class RequirementServicePermissionTests {
                     9001L,
                     "DONE",
                     LocalDateTime.of(2026, 3, 2, 9, 15),
-                    LocalDateTime.of(2026, 3, 2, 11, 45));
+                    LocalDateTime.of(2026, 3, 2, 11, 45),
+                    "核心流程回归",
+                    "执行主流程并检查输出",
+                    "输出符合预期",
+                    "通过",
+                    "联调");
 
             assertThat(dto.getActualHours()).isEqualByComparingTo("2.50");
 
@@ -175,6 +220,11 @@ class RequirementServicePermissionTests {
             assertThat(persisted.getActualStartAt()).isEqualTo(LocalDateTime.of(2026, 3, 2, 9, 15));
             assertThat(persisted.getActualEndAt()).isEqualTo(LocalDateTime.of(2026, 3, 2, 11, 45));
             assertThat(persisted.getActualHours()).isEqualByComparingTo("2.50");
+            assertThat(persisted.getVerificationScenario()).isEqualTo("核心流程回归");
+            assertThat(persisted.getVerificationSteps()).isEqualTo("执行主流程并检查输出");
+            assertThat(persisted.getVerificationResult()).isEqualTo("输出符合预期");
+            assertThat(persisted.getVerificationConclusion()).isEqualTo("通过");
+            assertThat(persisted.getVerificationMethod()).isEqualTo("联调");
         }
     }
 
