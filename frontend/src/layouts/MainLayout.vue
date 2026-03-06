@@ -37,10 +37,6 @@
             <el-icon><Document /></el-icon>
             <template #title>{{ layoutText.routeLabels.Requirements }}</template>
           </el-menu-item>
-          <el-menu-item :index="`/projects/${currentProject.id}/tasks`">
-            <el-icon><List /></el-icon>
-            <template #title>{{ layoutText.routeLabels.Tasks }}</template>
-          </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/bugs`">
             <el-icon><Warning /></el-icon>
             <template #title>{{ layoutText.routeLabels.Bugs }}</template>

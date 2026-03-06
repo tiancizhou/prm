@@ -153,38 +153,39 @@
           <template #default="{ row }">
             <div class="expand-wrap">
               <div class="expand-header">
-                <span class="expand-title">{{ requirementText.expand.relatedTasks }}</span>
-                <el-button v-if="canManageProject" size="small" type="primary" :icon="Plus" @click="openTaskCreate(row)">
-                  {{ requirementText.buttons.decomposeToTask }}
+                <span class="expand-title">子需求</span>
+                <el-button v-if="canManageProject" size="small" type="primary" :icon="Plus" @click="openSubReqCreate(row)">
+                  新建子需求
                 </el-button>
               </div>
               <el-table
-                :data="taskMap[row.id] || []"
-                :loading="taskLoadingMap[row.id]"
+                :data="subReqMap[row.id] || []"
+                :loading="subReqLoadingMap[row.id]"
                 size="small"
                 class="expand-table"
               >
                 <el-table-column prop="id" label="ID" width="64" />
-                <el-table-column prop="title" :label="requirementText.expand.taskTitle" min-width="180" />
-                <el-table-column prop="type" :label="requirementText.expand.type" width="88" />
-                <el-table-column :label="requirementText.expand.status" width="100">
-                  <template #default="{ row: task }">
-                    <el-tag size="small" round :type="taskStatusType(task.status)">{{ task.statusLabel }}</el-tag>
+                <el-table-column prop="title" label="标题" min-width="200" />
+                <el-table-column label="状态" width="100">
+                  <template #default="{ row: sub }">
+                    <el-tag size="small" round :type="statusTagType(sub.status)" effect="plain">{{ sub.statusLabel }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="assigneeName" :label="requirementText.expand.assignee" width="96" />
-                <el-table-column :label="requirementText.expand.hours" width="120">
-                  <template #default="{ row: task }">
-                    <span class="hours">{{ requirementText.expand.estimatedPrefix }} {{ task.estimatedHours }}h / {{ requirementText.expand.spentPrefix }} {{ task.spentHours }}h</span>
+                <el-table-column label="优先级" width="90">
+                  <template #default="{ row: sub }">
+                    <el-tag size="small" round :type="priorityType(sub.priority)" effect="plain">{{ priorityLabel(sub.priority) }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="dueDate" :label="requirementText.expand.due" width="110">
-                  <template #default="{ row: task }">{{ formatDate(task.dueDate) || requirementText.detail.noneSymbol }}</template>
+                <el-table-column prop="assigneeName" label="负责人" width="96">
+                  <template #default="{ row: sub }">{{ sub.assigneeName || requirementText.detail.noneSymbol }}</template>
+                </el-table-column>
+                <el-table-column label="截止日期" width="110">
+                  <template #default="{ row: sub }">{{ formatDate(sub.dueDate) || requirementText.detail.noneSymbol }}</template>
                 </el-table-column>
               </el-table>
               <el-empty
-                v-if="!taskLoadingMap[row.id] && !(taskMap[row.id]?.length)"
-                :description="requirementText.expand.noRelatedTasks"
+                v-if="!subReqLoadingMap[row.id] && !(subReqMap[row.id]?.length)"
+                description="暂无子需求"
                 :image-size="56"
                 class="expand-empty"
               />
@@ -249,9 +250,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column :label="requirementText.tableHeaders.taskCount" width="80" align="center" v-if="colVisible('taskCount')">
+        <el-table-column label="子需求" width="80" align="center" v-if="colVisible('taskCount')">
           <template #default="{ row }">
-            <el-tag size="small" type="info" round>{{ taskCountMap[row.id] ?? requirementText.detail.noneSymbol }}</el-tag>
+            <el-tag size="small" type="info" round>{{ row.childrenCount ?? 0 }}</el-tag>
           </template>
         </el-table-column>
 
@@ -264,11 +265,8 @@
               <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openEdit(row)">
                 {{ requirementText.buttons.edit }}
               </el-button>
-              <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openTaskCreate(row)">
-                {{ requirementText.buttons.decompose }}
-              </el-button>
-              <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openTaskTemplateDialog(row)">
-                {{ taskTemplateText.applyButton }}
+              <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openSubReqCreate(row)">
+                子需求
               </el-button>
               <el-dropdown v-if="canEditRequirement(row) && nextStatusOptions(row).length" @command="(cmd: string) => changeStatus(row, cmd)" trigger="click">
                 <el-button size="small" link type="primary" class="action-status-btn">{{ requirementText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
@@ -460,8 +458,8 @@
             <el-tag size="small" round :type="priorityType(detailReq.priority)" effect="plain">{{ priorityLabel(detailReq.priority) }}</el-tag>
           </div>
           <div v-if="canManageProject" class="detail-actions">
-            <el-button type="primary" plain size="small" @click="openTaskTemplateDialog(detailReq)">
-              {{ taskTemplateText.applyButton }}
+            <el-button type="primary" plain size="small" :icon="Plus" @click="() => { showDetail = false; openSubReqCreate(detailReq) }">
+              新建子需求
             </el-button>
           </div>
         </div>
@@ -493,9 +491,6 @@
         </div>
       </div>
       <template #footer>
-        <el-button v-if="canManageProject && detailReq" type="primary" plain @click="openTaskTemplateDialog(detailReq)">
-          {{ taskTemplateText.applyButton }}
-        </el-button>
         <el-button @click="showDetail = false">{{ requirementText.buttons.close }}</el-button>
       </template>
     </el-dialog>
@@ -551,111 +546,6 @@
       </template>
     </el-dialog>
 
-    <!-- Decompose Task Dialog -->
-    <el-dialog v-model="showTaskCreate" :title="`${requirementText.dialogs.decomposeTaskPrefix} / ${currentReq?.title || ''}`" width="560px" destroy-on-close>
-      <el-form :model="taskForm" label-width="100px">
-        <el-form-item :label="requirementText.formLabels.belongsRequirement">
-          <el-input :model-value="currentReq?.title" disabled />
-        </el-form-item>
-        <el-form-item :label="requirementText.formLabels.taskTitle" required>
-          <el-input v-model="taskForm.title" :placeholder="requirementText.placeholders.taskTitle" />
-        </el-form-item>
-        <el-form-item :label="requirementText.formLabels.taskType">
-          <el-select v-model="taskForm.type">
-            <el-option v-for="opt in taskTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="requirementText.formLabels.priority">
-          <el-select v-model="taskForm.priority">
-            <el-option v-for="opt in taskPriorityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="requirementText.formLabels.owner">
-          <el-select v-model="taskForm.assigneeId" clearable filterable :placeholder="requirementText.placeholders.assignee" class="full-width-control">
-            <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="requirementText.formLabels.estimatedHours">
-          <el-input-number v-model="taskForm.estimatedHours" :min="0" :precision="1" />
-        </el-form-item>
-        <el-form-item :label="requirementText.formLabels.dueDate">
-          <el-date-picker v-model="taskForm.dueDate" type="date" value-format="YYYY-MM-DD" class="full-width-control" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showTaskCreate = false">{{ requirementText.buttons.cancel }}</el-button>
-        <el-button type="primary" :loading="creatingTask" @click="createTask">{{ requirementText.buttons.createTask }}</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showTaskTemplateDialog"
-      :title="`${taskTemplateText.dialogTitle} / ${currentReq?.title || ''}`"
-      width="980px"
-      destroy-on-close
-    >
-      <div class="template-toolbar">
-        <el-select v-model="taskTemplateKey" class="template-select" @change="applySelectedTaskTemplate">
-          <el-option
-            v-for="template in taskTemplateOptions"
-            :key="template.value"
-            :label="template.label"
-            :value="template.value"
-          />
-        </el-select>
-        <el-button type="primary" plain @click="addTaskTemplateRow">{{ taskTemplateText.addRow }}</el-button>
-      </div>
-      <div class="form-tip">{{ taskTemplateText.hint }}</div>
-
-      <el-table :data="taskTemplateRows" size="small" class="template-table" max-height="360">
-        <el-table-column :label="taskTemplateText.columns.title" min-width="240">
-          <template #default="{ row }">
-            <el-input v-model="row.title" :placeholder="requirementText.placeholders.taskTitle" maxlength="120" />
-          </template>
-        </el-table-column>
-        <el-table-column :label="taskTemplateText.columns.type" width="110">
-          <template #default="{ row }">
-            <el-select v-model="row.type">
-              <el-option v-for="opt in taskTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column :label="taskTemplateText.columns.priority" width="110">
-          <template #default="{ row }">
-            <el-select v-model="row.priority">
-              <el-option v-for="opt in taskPriorityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column :label="taskTemplateText.columns.assignee" width="150">
-          <template #default="{ row }">
-            <el-select v-model="row.assigneeId" clearable filterable :placeholder="requirementText.placeholders.assignee" class="full-width-control">
-              <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column :label="taskTemplateText.columns.estimatedHours" width="120">
-          <template #default="{ row }">
-            <el-input-number v-model="row.estimatedHours" :min="0" :precision="1" :step="0.5" controls-position="right" />
-          </template>
-        </el-table-column>
-        <el-table-column :label="taskTemplateText.columns.dueDate" width="150">
-          <template #default="{ row }">
-            <el-date-picker v-model="row.dueDate" type="date" value-format="YYYY-MM-DD" class="full-width-control" />
-          </template>
-        </el-table-column>
-        <el-table-column :label="taskTemplateText.columns.actions" width="80" align="center">
-          <template #default="{ $index }">
-            <el-button type="danger" link @click="removeTaskTemplateRow($index)">{{ requirementText.buttons.delete }}</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <template #footer>
-        <el-button @click="showTaskTemplateDialog = false">{{ requirementText.buttons.cancel }}</el-button>
-        <el-button type="primary" :loading="taskTemplateSubmitting" @click="submitTaskTemplate">{{ taskTemplateText.submitButton }}</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -664,7 +554,6 @@ import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { Plus, Search, List, Grid, Calendar, MoreFilled, Filter, Setting, ArrowDown, UploadFilled, Document } from '@element-plus/icons-vue'
 import { requirementApi } from '@/api/requirement'
-import { taskApi } from '@/api/task'
 import { projectApi } from '@/api/project'
 import { sprintApi } from '@/api/sprint'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -934,9 +823,8 @@ const total = ref(0)
 const members = ref<any[]>([])
 const sprints = ref<any[]>([])
 
-const taskMap = reactive<Record<number, any[]>>({})
-const taskLoadingMap = reactive<Record<number, boolean>>({})
-const taskCountMap = reactive<Record<number, number>>({})
+const subReqMap = reactive<Record<number, any[]>>({})
+const subReqLoadingMap = reactive<Record<number, boolean>>({})
 
 // When multiple statuses selected, filter client-side (API only supports single status)
 const displayList = computed(() => {
@@ -1140,49 +1028,14 @@ const form = reactive({
   estimatedHours: 0,
   acceptanceCriteria: '',
   startDate: '',
-  dueDate: ''
+  dueDate: '',
+  assigneeId: null as number | null,
+  sprintId: null as number | null,
+  parentId: null as number | null
 })
 const formRules = { title: [{ required: true, message: requirementText.messages.titleRequired, trigger: 'blur' }] }
 
-// Decompose task
-const showTaskCreate = ref(false)
-const creatingTask = ref(false)
 const currentReq = ref<any>(null)
-const taskForm = reactive({ title: '', type: 'TASK', priority: 'MEDIUM', assigneeId: null as number | null, estimatedHours: 0, dueDate: '' })
-
-type TaskTemplateKey = 'feature' | 'bugfix'
-
-type TaskTemplateRow = {
-  title: string
-  type: 'TASK' | 'SUBTASK' | 'TECH'
-  priority: 'LOW' | 'MEDIUM' | 'HIGH'
-  assigneeId: number | null
-  estimatedHours: number
-  dueDate: string
-}
-
-const showTaskTemplateDialog = ref(false)
-const taskTemplateSubmitting = ref(false)
-const taskTemplateKey = ref<TaskTemplateKey>('feature')
-const taskTemplateRows = ref<TaskTemplateRow[]>([])
-
-const taskTemplateOptions: Array<{ value: TaskTemplateKey; label: string }> = [
-  { value: 'feature', label: taskTemplateText.templates.feature },
-  { value: 'bugfix', label: taskTemplateText.templates.bugfix }
-]
-
-const taskTemplatePresets: Record<TaskTemplateKey, TaskTemplateRow[]> = {
-  feature: [
-    { title: currentLocale === 'zh-CN' ? '需求澄清与边界确认' : 'Clarify requirement scope', type: 'TASK', priority: 'MEDIUM', assigneeId: null, estimatedHours: 1, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '核心开发实现' : 'Core implementation', type: 'TASK', priority: 'HIGH', assigneeId: null, estimatedHours: 4, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '联调与自测' : 'Integration and self-test', type: 'TASK', priority: 'MEDIUM', assigneeId: null, estimatedHours: 2, dueDate: '' }
-  ],
-  bugfix: [
-    { title: currentLocale === 'zh-CN' ? '复现与根因定位' : 'Reproduce and root-cause analysis', type: 'TASK', priority: 'HIGH', assigneeId: null, estimatedHours: 1, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '修复与回归验证' : 'Fix and regression verification', type: 'TASK', priority: 'HIGH', assigneeId: null, estimatedHours: 2, dueDate: '' },
-    { title: currentLocale === 'zh-CN' ? '发布说明与同步' : 'Release note and sync', type: 'SUBTASK', priority: 'MEDIUM', assigneeId: null, estimatedHours: 0.5, dueDate: '' }
-  ]
-}
 
 const showDoneStatusDialog = ref(false)
 const doneStatusSubmitting = ref(false)
@@ -1208,7 +1061,6 @@ async function load() {
     if (total.value < list.value.length) {
       total.value = list.value.length
     }
-    list.value.forEach((req: any) => loadTaskCount(req.id))
   } finally {
     loading.value = false
   }
@@ -1233,27 +1085,21 @@ async function loadSprints() {
   }
 }
 
-async function loadTaskCount(reqId: number) {
+async function loadSubReqs(reqId: number) {
+  subReqLoadingMap[reqId] = true
   try {
-    const res = await taskApi.list({ projectId, requirementId: reqId, page: 1, size: 1 })
-    taskCountMap[reqId] = (res as any).data?.total ?? 0
-  } catch {}
-}
-
-async function loadTasks(reqId: number) {
-  taskLoadingMap[reqId] = true
-  try {
-    const res = await taskApi.list({ projectId, requirementId: reqId, page: 1, size: 100 })
+    const res = await requirementApi.list({ projectId, parentId: reqId, page: 1, size: 100 })
     const data = (res as any).data
-    taskMap[reqId] = data?.records || []
+    subReqMap[reqId] = data?.records || []
   } finally {
-    taskLoadingMap[reqId] = false
+    subReqLoadingMap[reqId] = false
   }
 }
 
 function onExpand(row: any, expandedRows: any[]) {
-  if (expandedRows.some((r: any) => r.id === row.id)) loadTasks(row.id)
+  if (expandedRows.some((r: any) => r.id === row.id)) loadSubReqs(row.id)
 }
+
 
 function openCreate() {
   if (!canManageProject.value) {
@@ -1364,121 +1210,25 @@ async function saveEdit() {
 }
 
 
-function openTaskCreate(req: any) {
+function openSubReqCreate(parentReq: any) {
   if (!canManageProject.value) {
     ElMessage.warning(requirementText.messages.noManagePermission)
     return
   }
-  currentReq.value = req
-  taskForm.title = ''
-  taskForm.type = 'TASK'
-  taskForm.priority = 'MEDIUM'
-  taskForm.assigneeId = req?.assigneeId ?? null
-  taskForm.estimatedHours = 0
-  taskForm.dueDate = ''
-  showTaskCreate.value = true
-}
-
-function cloneTaskTemplateRows(rows: TaskTemplateRow[]): TaskTemplateRow[] {
-  return rows.map(row => ({ ...row }))
-}
-
-function applySelectedTaskTemplate() {
-  const defaultAssigneeId = currentReq.value?.assigneeId ?? null
-  taskTemplateRows.value = cloneTaskTemplateRows(taskTemplatePresets[taskTemplateKey.value] ?? []).map(row => ({
-    ...row,
-    assigneeId: defaultAssigneeId
-  }))
-}
-
-function addTaskTemplateRow() {
-  taskTemplateRows.value.push({
+  // 复用新建需求弹窗，预填 parentId
+  Object.assign(form, {
     title: '',
-    type: 'TASK',
+    description: '',
     priority: 'MEDIUM',
-    assigneeId: currentReq.value?.assigneeId ?? null,
     estimatedHours: 0,
-    dueDate: ''
+    acceptanceCriteria: '',
+    startDate: '',
+    dueDate: '',
+    assigneeId: parentReq?.assigneeId ?? null,
+    sprintId: parentReq?.sprintId ?? null,
+    parentId: parentReq?.id ?? null
   })
-}
-
-function removeTaskTemplateRow(index: number) {
-  taskTemplateRows.value.splice(index, 1)
-}
-
-function openTaskTemplateDialog(req: any) {
-  if (!canManageProject.value) {
-    ElMessage.warning(requirementText.messages.noManagePermission)
-    return
-  }
-  currentReq.value = req
-  taskTemplateKey.value = 'feature'
-  applySelectedTaskTemplate()
-  showTaskTemplateDialog.value = true
-}
-
-async function submitTaskTemplate() {
-  if (!currentReq.value?.id) {
-    return
-  }
-
-  const validRows = taskTemplateRows.value
-    .map(row => ({
-      ...row,
-      title: row.title.trim(),
-      estimatedHours: Number.isFinite(Number(row.estimatedHours)) ? Number(row.estimatedHours) : 0
-    }))
-    .filter(row => row.title)
-
-  if (!validRows.length) {
-    ElMessage.warning(taskTemplateText.messages.titleRequired)
-    return
-  }
-
-  if (validRows.some(row => row.estimatedHours < 0)) {
-    ElMessage.warning(taskTemplateText.messages.estimatedInvalid)
-    return
-  }
-
-  taskTemplateSubmitting.value = true
-  try {
-    let successCount = 0
-    let failedCount = 0
-    for (const row of validRows) {
-      try {
-        await taskApi.create({
-          projectId,
-          requirementId: currentReq.value.id,
-          title: row.title,
-          type: row.type,
-          priority: row.priority,
-          estimatedHours: row.estimatedHours,
-          dueDate: row.dueDate || undefined,
-          assigneeId: row.assigneeId ?? undefined
-        })
-        successCount += 1
-      } catch {
-        failedCount += 1
-      }
-    }
-
-    if (failedCount === 0) {
-      ElMessage.success(taskTemplateText.messages.createSuccess)
-      showTaskTemplateDialog.value = false
-    } else if (successCount > 0) {
-      ElMessage.warning(`${taskTemplateText.messages.createPartialFailed} (${successCount}/${validRows.length})`)
-    } else {
-      ElMessage.error(taskTemplateText.messages.createFailed)
-    }
-
-    if (currentReq.value?.id) {
-      loadTasks(currentReq.value.id)
-      loadTaskCount(currentReq.value.id)
-    }
-    await load()
-  } finally {
-    taskTemplateSubmitting.value = false
-  }
+  showCreate.value = true
 }
 
 async function create() {
@@ -1499,32 +1249,18 @@ async function create() {
     }
     ElMessage.success(requirementText.messages.requirementCreated)
     showCreate.value = false
-    Object.assign(form, { title: '', description: '', priority: 'MEDIUM', estimatedHours: 0, acceptanceCriteria: '', startDate: '', dueDate: '' })
+    const parentId = form.parentId
+    Object.assign(form, { title: '', description: '', priority: 'MEDIUM', estimatedHours: 0, acceptanceCriteria: '', startDate: '', dueDate: '', assigneeId: null, sprintId: null, parentId: null })
+    if (parentId) {
+      // 是子需求，刷新父需求展开的子需求列表
+      loadSubReqs(parentId)
+    }
     load()
   } finally {
     creating.value = false
   }
 }
 
-async function createTask() {
-  if (!taskForm.title.trim()) {
-    ElMessage.warning(requirementText.messages.taskTitleRequired)
-    return
-  }
-  creatingTask.value = true
-  try {
-    await taskApi.create({ ...taskForm, projectId, requirementId: currentReq.value?.id, assigneeId: taskForm.assigneeId ?? undefined })
-    ElMessage.success(requirementText.messages.taskCreated)
-    showTaskCreate.value = false
-    if (currentReq.value?.id) {
-      loadTasks(currentReq.value.id)
-      loadTaskCount(currentReq.value.id)
-    }
-    load()
-  } finally {
-    creatingTask.value = false
-  }
-}
 
 async function changeStatus(row: any, status: string) {
   if (!canEditRequirement(row)) {
@@ -1957,6 +1693,14 @@ onMounted(() => {
 
 .expand-table {
   margin-top: var(--space-sm);
+}
+
+.expand-table--clickable :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.expand-table--clickable :deep(.el-table__row:hover td) {
+  background-color: var(--app-color-primary-soft) !important;
 }
 
 .expand-empty {

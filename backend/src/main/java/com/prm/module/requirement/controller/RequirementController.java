@@ -48,10 +48,11 @@ public class RequirementController {
             @RequestParam(required = false) Long sprintId,
             @RequestParam(required = false) Boolean unscheduled,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateTo) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateTo,
+            @RequestParam(required = false) Long parentId) {
         return R.ok(PageResult.of(requirementService.page(
                 page, size, projectId, status, keyword,
-                assigneeId, sprintId, unscheduled, dueDateFrom, dueDateTo)));
+                assigneeId, sprintId, unscheduled, dueDateFrom, dueDateTo, parentId)));
     }
 
     @Operation(summary = "创建需求")

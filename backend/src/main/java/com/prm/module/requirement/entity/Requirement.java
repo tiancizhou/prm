@@ -15,6 +15,7 @@ public class Requirement {
     private Long id;
 
     private Long projectId;
+    private Long parentId;
     private Long sprintId;
     private String title;
     private String description;

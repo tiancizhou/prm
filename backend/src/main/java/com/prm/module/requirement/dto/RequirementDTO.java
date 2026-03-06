@@ -10,7 +10,10 @@ import java.time.LocalDateTime;
 public class RequirementDTO {
     private Long id;
     private Long projectId;
+    private Long parentId;
+    private String parentTitle;
     private Long sprintId;
+    private Integer childrenCount;
     private String title;
     private String description;
     private String source;

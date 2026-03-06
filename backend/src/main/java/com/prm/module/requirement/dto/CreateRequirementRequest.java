@@ -13,6 +13,8 @@ public class CreateRequirementRequest {
     @NotNull(message = "项目ID不能为空")
     private Long projectId;
 
+    private Long parentId;
+
     @NotBlank(message = "需求标题不能为空")
     private String title;
 

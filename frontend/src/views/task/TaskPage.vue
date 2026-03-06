@@ -51,7 +51,7 @@
             <el-badge :value="getTasksByStatus(col.status).length" :type="col.badgeType" />
           </div>
           <div class="kanban-col-body">
-            <el-card v-for="task in getTasksByStatus(col.status)" :key="task.id" class="task-card" shadow="hover">
+            <el-card v-for="task in getTasksByStatus(col.status)" :key="task.id" class="task-card" shadow="hover" @click="openDetail(task)">
               <el-tag
                 v-if="task.requirementTitle"
                 size="small"
@@ -100,7 +100,7 @@
         </div>
       </div>
 
-      <el-table v-else :data="list" v-loading="loading" class="task-table">
+      <el-table v-else :data="list" v-loading="loading" class="task-table task-table--clickable" @row-click="openDetail">
         <el-table-column prop="title" :label="taskText.labels.title" min-width="180" />
         <el-table-column :label="taskText.labels.requirement" min-width="140">
           <template #default="{ row }">
@@ -163,6 +163,50 @@
       </el-table>
     </el-card>
 
+    <!-- 任务详情弹窗 -->
+    <el-dialog v-model="showDetail" title="任务详情" width="560px" destroy-on-close>
+      <div v-if="detailTask" class="task-detail">
+        <h3 class="detail-task-title">{{ detailTask.title }}</h3>
+        <div class="detail-tags">
+          <el-tag size="small" :type="taskStatusType(detailTask.status)">{{ taskStatusLabel(detailTask.status) }}</el-tag>
+          <el-tag size="small" :type="priorityType(detailTask.priority)" effect="plain">{{ priorityLabel(detailTask.priority) }}</el-tag>
+          <el-tag size="small" type="info" effect="plain">{{ taskTypeLabel(detailTask.type) }}</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small" class="detail-desc">
+          <el-descriptions-item label="负责人">{{ detailTask.assigneeName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="截止日期">{{ detailTask.dueDate || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="预估工时">{{ detailTask.estimatedHours ?? 0 }}h</el-descriptions-item>
+          <el-descriptions-item label="已用工时">{{ detailTask.spentHours ?? 0 }}h</el-descriptions-item>
+          <el-descriptions-item label="剩余工时">{{ detailTask.remainingHours ?? 0 }}h</el-descriptions-item>
+          <el-descriptions-item label="关联需求">{{ detailTask.requirementTitle || '—' }}</el-descriptions-item>
+        </el-descriptions>
+        <div v-if="detailTask.description" class="detail-section">
+          <div class="detail-section-label">描述</div>
+          <div class="detail-section-content">{{ detailTask.description }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="detail-footer">
+          <div class="detail-footer-actions">
+            <el-dropdown
+              v-if="canOperateTask(detailTask)"
+              @command="(cmd: string) => { changeStatus(detailTask, cmd); showDetail = false }"
+              size="small"
+            >
+              <el-button size="small">变更状态 <el-icon><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="opt in statusActionOptions" :key="opt.value" :command="opt.value">{{ opt.label }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button v-if="canOperateTask(detailTask)" size="small" @click="() => { showDetail = false; openWorklog(detailTask) }">填报工时</el-button>
+          </div>
+          <el-button @click="showDetail = false">关闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="showWorklog" :title="taskText.dialogs.worklog" width="400px">
       <el-form :model="worklogForm" label-width="88px">
         <el-form-item :label="taskText.labels.task">
@@ -224,7 +268,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, Calendar, Plus, User, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { projectApi } from '@/api/project'
@@ -235,6 +279,7 @@ import { resolveThemeLocale } from '@/constants/theme'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const projectId = Number(route.params.id)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
@@ -253,6 +298,9 @@ const isManager = computed(() => {
 })
 
 const onlyMine = ref(!isManager.value)
+
+const showDetail = ref(false)
+const detailTask = ref<any>(null)
 
 const showWorklog = ref(false)
 const worklogSubmitting = ref(false)
@@ -415,6 +463,15 @@ async function changeStatus(row: any, status: string) {
   }
 }
 
+function openDetail(task: any) {
+  detailTask.value = task
+  showDetail.value = true
+  // 清除 URL 中的 taskId 参数，避免刷新重复弹出
+  if (route.query.taskId) {
+    router.replace({ query: {} })
+  }
+}
+
 function openWorklog(task: any) {
   worklogTask.value = task
   worklogForm.spentHours = 0.5
@@ -435,10 +492,26 @@ async function submitWorklog() {
   }
 }
 
-onMounted(() => {
-  void load()
+onMounted(async () => {
+  await load()
   void loadRequirements()
   void loadMembers()
+  // 从需求页跳转过来时，自动打开指定任务详情
+  const taskId = route.query.taskId ? Number(route.query.taskId) : null
+  if (taskId) {
+    const found = list.value.find((t: any) => t.id === taskId)
+    if (found) {
+      openDetail(found)
+    } else {
+      // 任务可能不在当前视图（如仅看我的），直接请求接口
+      try {
+        const res = await taskApi.get(taskId)
+        openDetail((res as any).data)
+      } catch {
+        // 无权限或不存在，静默忽略
+      }
+    }
+  }
 })
 </script>
 
@@ -624,6 +697,67 @@ onMounted(() => {
 
 .task-table :deep(.el-table__row:hover) {
   background-color: var(--app-bg-muted) !important;
+}
+
+.task-table--clickable :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.task-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.detail-task-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+  line-height: 1.4;
+}
+
+.detail-tags {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.detail-desc {
+  margin-top: var(--space-sm);
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.detail-section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text-secondary);
+}
+
+.detail-section-content {
+  font-size: 14px;
+  color: var(--app-text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: var(--app-bg-muted);
+  border-radius: var(--app-radius-sm);
+  padding: var(--space-md);
+}
+
+.detail-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-footer-actions {
+  display: flex;
+  gap: var(--space-sm);
 }
 
 .worklog-unit {

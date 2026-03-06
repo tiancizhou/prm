@@ -46,7 +46,7 @@ public class RequirementService {
 
     public IPage<RequirementDTO> page(int pageNum, int pageSize, Long projectId, String status, String keyword,
                                        Long assigneeId, Long sprintId, Boolean unscheduled,
-                                       LocalDate dueDateFrom, LocalDate dueDateTo) {
+                                       LocalDate dueDateFrom, LocalDate dueDateTo, Long parentId) {
         Page<Requirement> pageReq = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Requirement> wrapper = new LambdaQueryWrapper<Requirement>()
                 .eq(Requirement::getDeleted, 0)
@@ -111,6 +111,12 @@ public class RequirementService {
         else if (sprintId != null) wrapper.eq(Requirement::getSprintId, sprintId);
         if (dueDateFrom != null) wrapper.ge(Requirement::getDueDate, dueDateFrom);
         if (dueDateTo != null)   wrapper.le(Requirement::getDueDate, dueDateTo);
+        // 父子需求过滤：指定 parentId 查子需求；不指定则默认只查顶级需求
+        if (parentId != null) {
+            wrapper.eq(Requirement::getParentId, parentId);
+        } else {
+            wrapper.isNull(Requirement::getParentId);
+        }
 
         IPage<Requirement> rPage = requirementMapper.selectPage(pageReq, wrapper);
         return rPage.convert(this::toDTO);
@@ -127,6 +133,7 @@ public class RequirementService {
         }
         Requirement r = new Requirement();
         r.setProjectId(request.getProjectId());
+        r.setParentId(request.getParentId());
         r.setSprintId(request.getSprintId());
         r.setTitle(request.getTitle());
         r.setDescription(request.getDescription());
@@ -234,6 +241,17 @@ public class RequirementService {
         RequirementDTO dto = new RequirementDTO();
         dto.setId(r.getId());
         dto.setProjectId(r.getProjectId());
+        dto.setParentId(r.getParentId());
+        if (r.getParentId() != null) {
+            Requirement parent = requirementMapper.selectById(r.getParentId());
+            if (parent != null) dto.setParentTitle(parent.getTitle());
+        }
+        // 子需求数量
+        Long childCount = requirementMapper.selectCount(
+                new LambdaQueryWrapper<Requirement>()
+                        .eq(Requirement::getParentId, r.getId())
+                        .eq(Requirement::getDeleted, 0));
+        dto.setChildrenCount(childCount != null ? childCount.intValue() : 0);
         dto.setSprintId(r.getSprintId());
         dto.setTitle(r.getTitle());
         dto.setDescription(r.getDescription());
