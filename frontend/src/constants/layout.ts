@@ -28,8 +28,9 @@ export const MAIN_LAYOUT_I18N: Record<
       Projects: '\u9879\u76ee\u5217\u8868',
       ProjectOverview: '\u9879\u76ee\u6982\u89c8',
       Requirements: '\u9700\u6c42\u7ba1\u7406',
+      Modules: '\u6a21\u5757\u7ef4\u62a4',
       Tasks: '\u4efb\u52a1\u7ba1\u7406',
-      Bugs: '\u7f3a\u9677\u7ba1\u7406',
+      Bugs: 'Bug管理',
       Sprints: '\u8fed\u4ee3\u7ba1\u7406',
       ProjectMembers: '\u9879\u76ee\u6210\u5458',
       Users: '\u7528\u6237\u7ba1\u7406'
@@ -49,6 +50,7 @@ export const MAIN_LAYOUT_I18N: Record<
       Projects: 'Projects',
       ProjectOverview: 'Project Overview',
       Requirements: 'Requirements',
+      Modules: 'Module Management',
       Tasks: 'Tasks',
       Bugs: 'Defects',
       Sprints: 'Sprints',

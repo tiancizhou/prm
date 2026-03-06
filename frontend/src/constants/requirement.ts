@@ -287,6 +287,7 @@ export const REQUIREMENT_I18N: Record<
     ],
     columnOptions: [
       { key: 'id', label: 'ID' },
+      { key: 'module', label: '模块' },
       { key: 'title', label: '标题' },
       { key: 'priority', label: '优先级' },
       { key: 'status', label: '状态' },
@@ -295,7 +296,7 @@ export const REQUIREMENT_I18N: Record<
       { key: 'dueDate', label: '截止日期' },
       { key: 'estimate', label: '预估' },
       { key: 'actual', label: '实际' },
-      { key: 'taskCount', label: '任务数' }
+      { key: 'taskCount', label: '子需求数' }
     ],
     priorityLabels: {
       LOW: '低',

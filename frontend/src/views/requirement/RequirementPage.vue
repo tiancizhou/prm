@@ -8,23 +8,6 @@
           <h1 class="page-title">{{ requirementText.pageTitle }}</h1>
           <p class="page-subtitle">{{ requirementText.pageSubtitle }}</p>
         </div>
-        <div class="view-toggles">
-          <el-tooltip :content="requirementText.viewLabels.list" placement="bottom">
-            <el-button :type="viewMode === 'list' ? 'primary' : 'default'" size="small" circle :aria-label="requirementText.viewLabels.list" @click="viewMode = 'list'">
-              <el-icon><List /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip :content="requirementText.viewLabels.kanbanSoon" placement="bottom">
-            <el-button type="default" size="small" circle :aria-label="requirementText.viewLabels.kanbanSoon" disabled>
-              <el-icon><Grid /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip :content="requirementText.viewLabels.timelineSoon" placement="bottom">
-            <el-button type="default" size="small" circle :aria-label="requirementText.viewLabels.timelineSoon" disabled>
-              <el-icon><Calendar /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
       </div>
       <div class="header-right page-actions">
         <el-button v-if="canManageProject" type="primary" :icon="Plus" @click="openCreate">{{ requirementText.buttons.newRequirement }}</el-button>
@@ -40,6 +23,71 @@
       </div>
     </header>
 
+    <!-- PAGE BODY -->
+    <div class="page-body">
+
+      <!-- 左侧模块侧栏 -->
+      <div class="module-sidebar" :class="{ collapsed: sidebarCollapsed }">
+        <template v-if="!sidebarCollapsed">
+          <!-- 顶部：全部需求 + 折叠按钮 -->
+          <div class="sidebar-top">
+            <div
+              class="sidebar-all"
+              :class="{ active: filterModuleId === null }"
+              @click="selectSidebarModule(null)"
+            >全部需求</div>
+            <div class="sidebar-icons">
+              <el-tooltip content="收起侧栏" placement="top">
+                <el-button circle size="default" @click="sidebarCollapsed = true">
+                  <el-icon style="font-size:18px"><DArrowLeft /></el-icon>
+                </el-button>
+              </el-tooltip>
+            </div>
+          </div>
+
+          <ul class="sidebar-module-list">
+            <template v-for="m in modules" :key="m.id">
+              <li class="sidebar-module-item" :class="{ active: filterModuleId === m.id }">
+                <span
+                  v-if="m.children?.length"
+                  class="tree-arrow"
+                  :class="{ expanded: reqExpandedIds.has(m.id) }"
+                  @click.stop="toggleReqExpand(m.id)"
+                >
+                  <el-icon><ArrowRight /></el-icon>
+                </span>
+                <span v-else class="tree-arrow-placeholder" />
+                <span class="module-name" :title="m.name" @click="selectSidebarModule(m.id)">{{ m.name }}</span>
+              </li>
+              <template v-if="m.children?.length && reqExpandedIds.has(m.id)">
+                <li
+                  v-for="child in m.children"
+                  :key="child.id"
+                  class="sidebar-module-item sidebar-module-item--child"
+                  :class="{ active: filterModuleId === child.id }"
+                  @click="selectSidebarModule(child.id)"
+                >
+                  <span class="tree-arrow-placeholder" />
+                  <span class="module-name" :title="child.name">{{ child.name }}</span>
+                </li>
+              </template>
+            </template>
+          </ul>
+        </template>
+
+        <!-- 折叠态：展开按钮 -->
+        <template v-else>
+          <div class="sidebar-expand">
+            <el-button circle size="default" @click="sidebarCollapsed = false">
+              <el-icon style="font-size:18px"><DArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </template>
+      </div>
+
+      <!-- 右侧内容区 -->
+      <div class="content-area">
+
     <!-- 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?QUICK VIEW TABS 闂佸磭鍎ら崝蹇涘疾閺屻儱鐓涢柟鑸妽濞呮粓鏌嶉悜妯哄闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸闁硅埇鍔嶅▍婊堟煃閻戞ê濮€闁哄懏鐓￠崺锟犲箛閵婏附鐝抽梺宕囧劋閸斿繘寮查弻銉ョ厸?-->
     <div class="quick-tabs">
       <button
@@ -50,6 +98,7 @@
         @click="setQuickView(tab.value)"
       >
         {{ tab.label }}
+        <span v-if="tab.count != null" class="tab-count">{{ tab.count }}</span>
       </button>
     </div>
 
@@ -85,7 +134,6 @@
       <el-select
         v-model="filterSprintId"
         :placeholder="requirementText.placeholders.sprint"
-        :disabled="quickView === 'unscheduled'"
         clearable
         class="filter-select"
         @change="load"
@@ -97,28 +145,8 @@
           :value="s.id"
         />
       </el-select>
-      <el-select
-        v-model="filterStatuses"
-        multiple
-        collapse-tags
-        collapse-tags-tooltip
-        :placeholder="requirementText.placeholders.status"
-        clearable
-        class="filter-select"
-        @change="load"
-      >
-        <el-option
-          v-for="opt in statusOptions"
-          :key="opt.value"
-          :label="opt.label"
-          :value="opt.value"
-        />
-      </el-select>
       <el-button type="primary" plain @click="load">{{ requirementText.buttons.apply }}</el-button>
       <div class="filter-bar-right">
-        <el-tooltip :content="requirementText.tooltips.advancedFilter" placement="bottom">
-          <el-button link :icon="Filter" class="icon-btn" :aria-label="requirementText.tooltips.advancedFilter" />
-        </el-tooltip>
         <el-popover placement="bottom-end" :width="220" trigger="click">
           <template #reference>
             <el-tooltip :content="requirementText.tooltips.customColumns" placement="bottom">
@@ -197,10 +225,20 @@
           <template #default="{ row }">{{ row.id }}</template>
         </el-table-column>
 
+        <el-table-column label="模块" width="100" v-if="colVisible('module')">
+          <template #default="{ row }">
+            <span v-if="row.moduleName" class="module-tag">{{ row.moduleName }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+
         <el-table-column :label="requirementText.tableHeaders.title" min-width="240" v-if="colVisible('title')">
           <template #default="{ row }">
             <div class="title-cell">
-              <span class="title-text">{{ row.title || requirementText.detail.noneSymbol }}</span>
+              <span
+                class="title-text title-link"
+                @click.stop="router.push(`/projects/${projectId}/requirements/${row.id}`)"
+              >{{ row.title || requirementText.detail.noneSymbol }}</span>
             </div>
           </template>
         </el-table-column>
@@ -259,10 +297,10 @@
         <el-table-column :label="requirementText.tableHeaders.actions" min-width="180" align="right">
           <template #default="{ row }">
             <div class="action-cell">
-              <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="openDetail(row)">
+              <el-button v-if="canViewRequirement(row)" size="small" link type="primary" @click.stop="router.push(`/projects/${projectId}/requirements/${row.id}`)">
                 {{ requirementText.buttons.view }}
               </el-button>
-              <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="openEdit(row)">
+              <el-button v-if="canManageProject" size="small" link type="primary" @click.stop="router.push(`/projects/${projectId}/requirements/${row.id}/edit`)">
                 {{ requirementText.buttons.edit }}
               </el-button>
               <el-button v-if="canManageProject" size="small" link type="primary" :icon="Plus" @click.stop="openSubReqCreate(row)">
@@ -302,6 +340,40 @@
       </div>
     </el-card>
 
+    <!-- 批量操作栏：列表底部 -->
+    <transition name="bulk-bar">
+      <div v-if="selectedRows.length" class="bulk-action-bar">
+        <span class="bulk-info">已选中 <strong>{{ selectedRows.length }}</strong> 条需求</span>
+        <div class="bulk-btns">
+          <el-button size="small" @click="openBatchAssign">指派</el-button>
+          <el-button size="small" type="primary" @click="goBatchEdit">批量编辑</el-button>
+        </div>
+      </div>
+    </transition>
+
+      </div><!-- end content-area -->
+    </div><!-- end page-body -->
+
+    <!-- 批量指派对话框 -->
+    <el-dialog v-model="showBatchAssign" title="批量指派" width="360px" destroy-on-close>
+      <el-form label-width="70px">
+        <el-form-item label="指派给">
+          <el-select v-model="batchAssigneeId" placeholder="选择成员" clearable style="width:100%">
+            <el-option
+              v-for="m in members"
+              :key="m.userId"
+              :label="m.nickname || m.username"
+              :value="m.userId"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showBatchAssign = false">取消</el-button>
+        <el-button type="primary" :loading="batchAssigning" @click="submitBatchAssign">确认指派</el-button>
+      </template>
+    </el-dialog>
+
     <!-- New Requirement Dialog -->
     <el-dialog v-model="showCreate" :title="requirementText.dialogs.createRequirement" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="88px">
@@ -319,6 +391,22 @@
           <el-col :span="12">
             <el-form-item :label="requirementText.formLabels.estimatedHours">
               <el-input-number v-model="form.estimatedHours" :min="0" :precision="1" class="full-width-control" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="所属模块">
+              <el-select v-model="form.moduleId" placeholder="选择模块（可选）" clearable class="full-width-control">
+                <el-option v-for="m in flatModules" :key="m.id" :label="m.name" :value="m.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item :label="requirementText.formLabels.assignee">
+              <el-select v-model="form.assigneeId" :placeholder="requirementText.placeholders.assignee" clearable class="full-width-control">
+                <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -395,6 +483,15 @@
             <el-form-item :label="requirementText.formLabels.sprint">
               <el-select v-model="editForm.sprintId" :placeholder="requirementText.placeholders.sprint" clearable class="full-width-control">
                 <el-option v-for="s in sprints" :key="s.id" :label="s.name" :value="s.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="所属模块">
+              <el-select v-model="editForm.moduleId" placeholder="选择模块（可选）" clearable class="full-width-control">
+                <el-option v-for="m in flatModules" :key="m.id" :label="m.name" :value="m.id" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -551,11 +648,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
-import { Plus, Search, List, Grid, Calendar, MoreFilled, Filter, Setting, ArrowDown, UploadFilled, Document } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Plus, Search, MoreFilled, Filter, Setting, ArrowDown, UploadFilled, Document, FolderOpened, Folder, ArrowLeft, ArrowRight, DArrowLeft, DArrowRight } from '@element-plus/icons-vue'
 import { requirementApi } from '@/api/requirement'
 import { projectApi } from '@/api/project'
 import { sprintApi } from '@/api/sprint'
+import { moduleApi, type ModuleDTO } from '@/api/module'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
@@ -565,6 +663,7 @@ import { resolveThemeLocale } from '@/constants/theme'
 const authStore = useAuthStore()
 const projectStore = useProjectStore()
 const route = useRoute()
+const router = useRouter()
 const projectId = Number(route.params.id)
 const currentUserId = computed(() => authStore.user?.userId ?? null)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
@@ -678,31 +777,74 @@ const canManageProject = computed(() => {
   return currentProject?.id === projectId && currentProject?.canEdit === true
 })
 
-// View mode & quick view
-const viewMode = ref<'list' | 'kanban' | 'timeline'>('list')
-type QuickView = 'all' | 'assigned' | 'due_week' | 'unscheduled'
+// Sidebar collapse
+const sidebarCollapsed = ref(false)
+const reqExpandedIds = ref<Set<number>>(new Set())
+function toggleReqExpand(id: number) {
+  if (reqExpandedIds.value.has(id)) {
+    reqExpandedIds.value.delete(id)
+  } else {
+    reqExpandedIds.value.add(id)
+  }
+}
+/** 收集指定模块及其所有后代的 ID 列表 */
+function collectModuleIds(targetId: number, nodes: ModuleDTO[]): number[] {
+  for (const n of nodes) {
+    if (n.id === targetId) {
+      // 找到了，收集本身 + 所有后代
+      const ids: number[] = [n.id]
+      function collectChildren(children: ModuleDTO[] | undefined) {
+        for (const c of children ?? []) {
+          ids.push(c.id)
+          collectChildren(c.children)
+        }
+      }
+      collectChildren(n.children)
+      return ids
+    }
+    const found = collectModuleIds(targetId, n.children ?? [])
+    if (found.length > 0) return found
+  }
+  return []
+}
+
+function selectSidebarModule(id: number | null) {
+  filterModuleId.value = id
+  query.page = 1
+  load()
+}
+
+// View mode & quick view (status-based tabs)
+const viewMode = ref<'list'>('list')
+type QuickView = 'all' | 'DRAFT' | 'IN_PROGRESS' | 'DONE' | 'assigned'
 const quickView = ref<QuickView>('all')
 
-const quickTabs: Array<{ value: QuickView; label: string }> = [
-  { value: 'all', label: requirementText.quickTabs.all },
-  { value: 'assigned', label: requirementText.quickTabs.assigned },
-  { value: 'due_week', label: requirementText.quickTabs.due_week },
-  { value: 'unscheduled', label: requirementText.quickTabs.unscheduled }
-]
+const quickTabs = computed<Array<{ value: QuickView; label: string; count?: number }>>(() => [
+  { value: 'all', label: '全部' },
+  { value: 'DRAFT', label: '草稿', count: statusCountMap.value['DRAFT'] },
+  { value: 'IN_PROGRESS', label: '进行中', count: statusCountMap.value['IN_PROGRESS'] },
+  { value: 'DONE', label: '已完成', count: statusCountMap.value['DONE'] },
+  { value: 'assigned', label: requirementText.quickTabs.assigned }
+])
 
-// Filter state (multi-select values)
+const statusCountMap = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
+  for (const row of list.value) {
+    if (row.status) map[row.status] = (map[row.status] ?? 0) + 1
+  }
+  return map
+})
+
+// Filter state
 const filterAssigneeIds = ref<number[]>([])
 const filterSprintId = ref<number | null>(null)
-const filterStatuses = ref<string[]>([])
+const filterModuleId = ref<number | null>(null)
+const modules = ref<ModuleDTO[]>([])
 const query = reactive({
   page: 1,
   size: 20,
   projectId,
-  status: '' as string,
-  keyword: '',
-  assigneeId: null as number | null,
-  sprintId: null as number | null,
-  unscheduled: false
+  keyword: ''
 })
 
 function toLocalDateText(date: Date): string {
@@ -747,15 +889,10 @@ function parseDateOnly(value: string | null | undefined): Date | null {
 
 // Build API params from filters
 function buildParams() {
-  const status = filterStatuses.value.length === 1 ? filterStatuses.value[0] : filterStatuses.value.length > 1 ? undefined : query.status
-
-  // Due this week: today to Sunday
-  let dueDateFrom: string | undefined
-  let dueDateTo: string | undefined
-  if (quickView.value === 'due_week') {
-    const weekRange = getCurrentWeekDateRange()
-    dueDateFrom = weekRange.fromText
-    dueDateTo = weekRange.toText
+  // status from quick tab (DRAFT/IN_PROGRESS/DONE) takes priority
+  let status: string | undefined
+  if (quickView.value === 'DRAFT' || quickView.value === 'IN_PROGRESS' || quickView.value === 'DONE') {
+    status = quickView.value
   }
 
   return {
@@ -765,10 +902,10 @@ function buildParams() {
     keyword: query.keyword || undefined,
     status: status || undefined,
     assigneeId: quickView.value === 'assigned' ? currentUserId.value : filterAssigneeIds.value[0] ?? undefined,
-    sprintId: quickView.value === 'unscheduled' ? undefined : (filterSprintId.value ?? undefined),
-    unscheduled: quickView.value === 'unscheduled' ? true : undefined,
-    dueDateFrom,
-    dueDateTo
+    sprintId: filterSprintId.value ?? undefined,
+    moduleIds: filterModuleId.value != null
+      ? collectModuleIds(filterModuleId.value, modules.value).join(',')
+      : undefined
   }
 }
 
@@ -776,9 +913,6 @@ function setQuickView(v: QuickView) {
   if (v === 'assigned' && !currentUserId.value) {
     ElMessage.warning(requirementText.messages.noEditPermission)
     return
-  }
-  if (v === 'unscheduled') {
-    filterSprintId.value = null
   }
   quickView.value = v
   query.page = 1
@@ -804,7 +938,7 @@ const columnOptions = [
   ...requirementText.columnOptions
 ]
 
-const visibleColumns = ref<string[]>(['title', 'priority', 'status', 'assignee', 'dueDate', 'estimate', 'actual', 'taskCount'])
+const visibleColumns = ref<string[]>(['id', 'module', 'title', 'priority', 'status', 'assignee', 'dueDate', 'estimate', 'taskCount'])
 const requirementTableRef = ref<any>(null)
 
 function colVisible(key: string) {
@@ -826,30 +960,36 @@ const sprints = ref<any[]>([])
 const subReqMap = reactive<Record<number, any[]>>({})
 const subReqLoadingMap = reactive<Record<number, boolean>>({})
 
-// When multiple statuses selected, filter client-side (API only supports single status)
+// Flatten module tree to a list for select dropdown
+function flattenModules(nodes: ModuleDTO[], prefix = ''): Array<{ id: number; name: string }> {
+  const result: Array<{ id: number; name: string }> = []
+  for (const n of nodes) {
+    result.push({ id: n.id, name: prefix + n.name })
+    if (n.children?.length) {
+      result.push(...flattenModules(n.children, prefix + n.name + ' / '))
+    }
+  }
+  return result
+}
+const flatModules = computed(() => flattenModules(modules.value))
+
+// Flatten module tree with depth info for sidebar
+function flattenModulesWithDepth(nodes: ModuleDTO[], depth = 0): Array<{ id: number; name: string; depth: number }> {
+  const result: Array<{ id: number; name: string; depth: number }> = []
+  for (const n of nodes) {
+    result.push({ id: n.id, name: n.name, depth })
+    if (n.children?.length) {
+      result.push(...flattenModulesWithDepth(n.children, depth + 1))
+    }
+  }
+  return result
+}
+const flatModulesWithDepth = computed(() => flattenModulesWithDepth(modules.value))
+
 const displayList = computed(() => {
   let rows = list.value
-
   if (quickView.value === 'assigned' && currentUserId.value != null) {
     rows = rows.filter(r => r.assigneeId != null && r.assigneeId === currentUserId.value)
-  }
-
-  if (quickView.value === 'unscheduled') {
-    rows = rows.filter(r => r.sprintId == null && !parseDateOnly(r?.startDate) && !parseDateOnly(r?.dueDate))
-  }
-
-  if (quickView.value === 'due_week') {
-    const { today, sunday } = getCurrentWeekDateRange()
-    rows = rows.filter(r => {
-      const dueDate = parseDateOnly(r?.dueDate)
-      if (!dueDate) return false
-      return dueDate.getTime() >= today.getTime() && dueDate.getTime() <= sunday.getTime()
-    })
-  }
-
-  if (filterStatuses.value.length > 1) {
-    const set = new Set(filterStatuses.value)
-    rows = rows.filter(r => set.has(r.status))
   }
   if (filterAssigneeIds.value.length > 1) {
     const set = new Set(filterAssigneeIds.value)
@@ -871,6 +1011,44 @@ const selectedRows = ref<any[]>([])
 
 function handleSelectionChange(rows: any[]) {
   selectedRows.value = rows
+}
+
+// ---- 批量操作 ----
+const showBatchAssign = ref(false)
+const batchAssigneeId = ref<number | null>(null)
+const batchAssigning = ref(false)
+
+function openBatchAssign() {
+  batchAssigneeId.value = null
+  showBatchAssign.value = true
+}
+
+async function submitBatchAssign() {
+  if (!batchAssigneeId.value) {
+    ElMessage.warning('请选择成员')
+    return
+  }
+  batchAssigning.value = true
+  try {
+    await Promise.all(
+      selectedRows.value.map(row =>
+        requirementApi.update(row.id, { ...row, assigneeId: batchAssigneeId.value })
+      )
+    )
+    ElMessage.success('指派成功')
+    showBatchAssign.value = false
+    requirementTableRef.value?.clearSelection()
+    await load()
+  } catch {
+    ElMessage.error('指派失败，请重试')
+  } finally {
+    batchAssigning.value = false
+  }
+}
+
+function goBatchEdit() {
+  const ids = selectedRows.value.map(r => r.id).join(',')
+  router.push(`/projects/${projectId}/requirements/batch-edit?ids=${ids}`)
 }
 
 function handleImportExport(cmd: string) {
@@ -1015,6 +1193,7 @@ const editForm = reactive({
   priority: 'MEDIUM',
   assigneeId: null as number | null,
   sprintId: null as number | null,
+  moduleId: null as number | null,
   estimatedHours: 0,
   acceptanceCriteria: '',
   startDate: '',
@@ -1031,6 +1210,7 @@ const form = reactive({
   dueDate: '',
   assigneeId: null as number | null,
   sprintId: null as number | null,
+  moduleId: null as number | null,
   parentId: null as number | null
 })
 const formRules = { title: [{ required: true, message: requirementText.messages.titleRequired, trigger: 'blur' }] }
@@ -1085,6 +1265,15 @@ async function loadSprints() {
   }
 }
 
+async function loadModules() {
+  try {
+    const res = await moduleApi.listTree(projectId)
+    modules.value = (res as any)?.data ?? res ?? []
+  } catch {
+    modules.value = []
+  }
+}
+
 async function loadSubReqs(reqId: number) {
   subReqLoadingMap[reqId] = true
   try {
@@ -1106,7 +1295,8 @@ function openCreate() {
     ElMessage.warning(requirementText.messages.noManagePermission)
     return
   }
-  showCreate.value = true
+  // 导航到全页面创建表单
+  router.push(`/projects/${projectId}/requirements/create`)
 }
 
 async function openEdit(row: any) {
@@ -1123,6 +1313,7 @@ async function openEdit(row: any) {
     editForm.priority = d.priority ?? 'MEDIUM'
     editForm.assigneeId = d.assigneeId ?? null
     editForm.sprintId = d.sprintId ?? null
+    editForm.moduleId = d.moduleId ?? null
     editForm.estimatedHours = d.estimatedHours ?? 0
     editForm.acceptanceCriteria = d.acceptanceCriteria ?? ''
     editForm.startDate = d.startDate ? String(d.startDate).slice(0, 10) : ''
@@ -1195,6 +1386,7 @@ async function saveEdit() {
       priority: editForm.priority,
       assigneeId: editForm.assigneeId ?? undefined,
       sprintId: editForm.sprintId ?? undefined,
+      moduleId: editForm.moduleId ?? undefined,
       estimatedHours: editForm.estimatedHours,
       acceptanceCriteria: editForm.acceptanceCriteria,
       startDate: editForm.startDate || undefined,
@@ -1250,7 +1442,7 @@ async function create() {
     ElMessage.success(requirementText.messages.requirementCreated)
     showCreate.value = false
     const parentId = form.parentId
-    Object.assign(form, { title: '', description: '', priority: 'MEDIUM', estimatedHours: 0, acceptanceCriteria: '', startDate: '', dueDate: '', assigneeId: null, sprintId: null, parentId: null })
+    Object.assign(form, { title: '', description: '', priority: 'MEDIUM', estimatedHours: 0, acceptanceCriteria: '', startDate: '', dueDate: '', assigneeId: null, sprintId: null, moduleId: null, parentId: null })
     if (parentId) {
       // 是子需求，刷新父需求展开的子需求列表
       loadSubReqs(parentId)
@@ -1366,7 +1558,7 @@ async function submitDoneStatus() {
 onMounted(() => {
   void (async () => {
     await ensureProjectPermission()
-    await Promise.all([load(), loadMembers(), loadSprints()])
+    await Promise.all([load(), loadMembers(), loadSprints(), loadModules()])
   })()
 })
 </script>
@@ -1375,6 +1567,8 @@ onMounted(() => {
 .req-page {
   padding: 0;
   min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .header-left {
@@ -1402,49 +1596,216 @@ onMounted(() => {
   background: linear-gradient(180deg, var(--app-color-primary), var(--app-color-accent));
 }
 
-.view-toggles {
+/* ====== Page body layout ====== */
+.page-body {
   display: flex;
-  gap: var(--space-xs);
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
-.view-toggles .el-button.is-circle {
-  width: 32px;
-  height: 32px;
+/* ====== Module Sidebar ====== */
+.module-sidebar {
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--app-bg-surface);
+  border-right: 1px solid var(--app-border-soft);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+.module-sidebar.collapsed {
+  width: 36px;
+}
+
+/* 顶部行：全部需求 + 图标 */
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px 6px;
+  flex-shrink: 0;
+}
+
+/* 全部需求 — 箭头形状高亮块 */
+.sidebar-all {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  border-radius: 4px;
+  background: #f3f4f6;
+  text-align: center;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-all.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.sidebar-all:hover:not(.active) {
+  background: #e5e7eb;
+}
+
+/* 折叠按钮区 */
+.sidebar-icons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* 折叠状态展开按钮 */
+.sidebar-expand {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+/* 模块列表 */
+.sidebar-module-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-module-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.4;
+  border-radius: 4px;
+  margin: 1px 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-module-item:hover {
+  background: #f3f4f6;
+}
+
+.sidebar-module-item.active .module-name {
+  color: #4080ff;
+  font-weight: 500;
+}
+
+.sidebar-module-item--child {
+  padding-left: 20px;
+}
+
+/* 展开箭头 */
+.tree-arrow {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: transform 0.2s, color 0.15s;
+}
+
+.tree-arrow:hover {
+  color: #4080ff;
+  background: #eff6ff;
+}
+
+.tree-arrow.expanded {
+  transform: rotate(90deg);
+  color: #4080ff;
+}
+
+.tree-arrow-placeholder {
+  flex-shrink: 0;
+  width: 18px;
+}
+
+.module-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* ====== Right content area ====== */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
 }
 
 /* Quick tabs */
 .quick-tabs {
   display: flex;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
-  border: 1px solid var(--app-border-soft);
-  border-radius: var(--app-radius-sm);
-  padding: var(--space-xs);
-  background: color-mix(in srgb, var(--app-bg-surface) 70%, transparent);
+  align-items: center;
+  gap: 2px;
+  margin-bottom: var(--space-md);
+  border-bottom: 1px solid var(--app-border-soft);
+  padding-bottom: 0;
 }
 
 .quick-tab {
-  padding: calc(var(--space-sm) + 2px) var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
   font-size: 13px;
   color: var(--app-text-secondary);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  border-radius: var(--el-border-radius-small);
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  margin-bottom: -1px;
 }
 
 .quick-tab:hover {
   color: var(--app-text-primary);
-  background: var(--app-bg-muted);
 }
 
 .quick-tab.active {
   color: var(--app-color-primary);
   font-weight: 600;
-  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
   border-bottom-color: var(--app-color-primary);
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--app-color-primary) 12%, transparent);
+  color: var(--app-color-primary);
+}
+
+.quick-tab.active .tab-count {
+  background: var(--app-color-primary);
+  color: #fff;
 }
 
 /* Filter bar */
@@ -1454,6 +1815,23 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: var(--space-md);
   margin-bottom: var(--space-lg);
+}
+
+.module-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
+  color: var(--app-color-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-muted {
+  color: var(--app-text-muted);
 }
 
 .filter-search {
@@ -1650,6 +2028,15 @@ onMounted(() => {
   font-size: 14px;
 }
 
+.title-link {
+  cursor: pointer;
+  color: #4080ff;
+}
+
+.title-link:hover {
+  text-decoration: underline;
+}
+
 .pill {
   font-size: 12px;
 }
@@ -1780,6 +2167,45 @@ onMounted(() => {
     flex: 1 1 160px;
     width: 160px;
   }
+}
+
+/* ---- 批量操作栏 ---- */
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 10px 16px;
+  background: #1d2129;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.bulk-info {
+  font-size: 13px;
+  color: #d1d5db;
+}
+
+.bulk-info strong {
+  color: #fff;
+  margin: 0 3px;
+}
+
+.bulk-btns {
+  display: flex;
+  gap: 10px;
+}
+
+/* 动画 */
+.bulk-bar-enter-active,
+.bulk-bar-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.bulk-bar-enter-from,
+.bulk-bar-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 @media (max-width: 1365px) {

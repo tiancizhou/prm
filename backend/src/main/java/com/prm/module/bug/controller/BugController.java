@@ -27,8 +27,9 @@ public class BugController {
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String severity,
-            @RequestParam(required = false) String keyword) {
-        return R.ok(PageResult.of(bugService.page(page, size, projectId, status, severity, keyword)));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String modules) {
+        return R.ok(PageResult.of(bugService.page(page, size, projectId, status, severity, keyword, modules)));
     }
 
     @Operation(summary = "提交Bug")
@@ -62,5 +63,24 @@ public class BugController {
     public R<Void> addComment(@PathVariable Long id, @RequestParam String content) {
         bugService.addComment(id, content);
         return R.ok();
+    }
+
+    @Operation(summary = "删除Bug")
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        bugService.delete(id);
+        return R.ok();
+    }
+
+    @Operation(summary = "Bug评论列表")
+    @GetMapping("/{id}/comments")
+    public R<java.util.List<java.util.Map<String, Object>>> listComments(@PathVariable Long id) {
+        return R.ok(bugService.listComments(id));
+    }
+
+    @Operation(summary = "Bug转研发需求")
+    @PostMapping("/{id}/convert-to-requirement")
+    public R<Long> convertToRequirement(@PathVariable Long id) {
+        return R.ok(bugService.convertToRequirement(id));
     }
 }

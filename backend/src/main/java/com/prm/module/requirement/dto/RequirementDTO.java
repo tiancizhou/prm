@@ -12,6 +12,8 @@ public class RequirementDTO {
     private Long projectId;
     private Long parentId;
     private String parentTitle;
+    private Long moduleId;
+    private String moduleName;
     private Long sprintId;
     private Integer childrenCount;
     private String title;

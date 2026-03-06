@@ -35,6 +35,10 @@ export const requirementApi = {
     http.get(`/requirements/${requirementId}/attachments`),
   deleteAttachment: (requirementId: number, attachmentId: number) =>
     http.delete(`/requirements/${requirementId}/attachments/${attachmentId}`),
+  listLogs: (requirementId: number) =>
+    http.get(`/requirements/${requirementId}/logs`),
+  addComment: (requirementId: number, content: string) =>
+    http.post(`/requirements/${requirementId}/logs`, { content }),
   /** Download attachment and trigger browser save dialog. */
   downloadAttachment: async (requirementId: number, attachmentId: number, filename: string) => {
     const res = await http.get(

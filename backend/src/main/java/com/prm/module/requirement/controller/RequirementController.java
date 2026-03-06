@@ -6,6 +6,7 @@ import com.prm.common.exception.BizException;
 import com.prm.module.requirement.application.RequirementService;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
+import com.prm.module.requirement.dto.RequirementLogDTO;
 import com.prm.module.requirement.dto.UpdateRequirementRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Tag(name = "需求管理")
@@ -49,10 +51,11 @@ public class RequirementController {
             @RequestParam(required = false) Boolean unscheduled,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDateTo,
-            @RequestParam(required = false) Long parentId) {
+            @RequestParam(required = false) Long parentId,
+            @RequestParam(required = false) String moduleIds) {
         return R.ok(PageResult.of(requirementService.page(
                 page, size, projectId, status, keyword,
-                assigneeId, sprintId, unscheduled, dueDateFrom, dueDateTo, parentId)));
+                assigneeId, sprintId, unscheduled, dueDateFrom, dueDateTo, parentId, moduleIds)));
     }
 
     @Operation(summary = "创建需求")
@@ -122,5 +125,18 @@ public class RequirementController {
                               @RequestParam(required = false) String remark) {
         requirementService.addReview(id, conclusion, remark);
         return R.ok();
+    }
+
+    @Operation(summary = "需求历史记录列表")
+    @GetMapping("/{id}/logs")
+    public R<List<RequirementLogDTO>> listLogs(@PathVariable Long id) {
+        return R.ok(requirementService.listLogs(id));
+    }
+
+    @Operation(summary = "添加需求备注")
+    @PostMapping("/{id}/logs")
+    public R<RequirementLogDTO> addComment(@PathVariable Long id,
+                                           @RequestBody Map<String, String> body) {
+        return R.ok(requirementService.addComment(id, body.get("content")));
     }
 }

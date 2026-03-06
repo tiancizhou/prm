@@ -14,6 +14,8 @@ import com.prm.module.bug.mapper.BugCommentMapper;
 import com.prm.module.bug.mapper.BugMapper;
 import com.prm.module.project.entity.ProjectMember;
 import com.prm.module.project.mapper.ProjectMemberMapper;
+import com.prm.module.requirement.entity.Requirement;
+import com.prm.module.requirement.mapper.RequirementMapper;
 import com.prm.module.system.entity.SysUser;
 import com.prm.module.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -37,8 +40,9 @@ public class BugService {
     private final BugStateMachine stateMachine;
     private final SysUserMapper userMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final RequirementMapper requirementMapper;
 
-    public IPage<BugDTO> page(int pageNum, int pageSize, Long projectId, String status, String severity, String keyword) {
+    public IPage<BugDTO> page(int pageNum, int pageSize, Long projectId, String status, String severity, String keyword, String modules) {
         Page<Bug> pageReq = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Bug> wrapper = new LambdaQueryWrapper<Bug>()
                 .eq(Bug::getDeleted, 0)
@@ -92,6 +96,12 @@ public class BugService {
         if (StringUtils.hasText(status)) wrapper.eq(Bug::getStatus, status);
         if (StringUtils.hasText(severity)) wrapper.eq(Bug::getSeverity, severity);
         if (StringUtils.hasText(keyword)) wrapper.like(Bug::getTitle, keyword);
+        if (StringUtils.hasText(modules)) {
+            List<String> nameList = Arrays.stream(modules.split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            if (!nameList.isEmpty()) wrapper.in(Bug::getModule, nameList);
+        }
         return bugMapper.selectPage(pageReq, wrapper).convert(this::toDTO);
     }
 
@@ -112,7 +122,7 @@ public class BugService {
         bug.setModule(request.getModule());
         bug.setSeverity(request.getSeverity() != null ? request.getSeverity() : "NORMAL");
         bug.setPriority(request.getPriority() != null ? request.getPriority() : "MEDIUM");
-        bug.setStatus("NEW");
+        bug.setStatus("ACTIVE");
         bug.setAssigneeId(request.getAssigneeId());
         bug.setReporterId(currentUserId);
         bug.setSteps(request.getSteps());
@@ -157,7 +167,6 @@ public class BugService {
         if (bug == null) throw BizException.notFound("Bug");
         ensureProjectManager(bug.getProjectId());
         bug.setAssigneeId(assigneeId);
-        bug.setStatus("ASSIGNED");
         bug.setUpdatedBy(SecurityUtil.getCurrentUserId());
         bugMapper.updateById(bug);
         return toDTO(bug);
@@ -178,6 +187,69 @@ public class BugService {
         comment.setCreatedAt(LocalDateTime.now());
         comment.setUpdatedAt(LocalDateTime.now());
         commentMapper.insert(comment);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Bug bug = bugMapper.selectById(id);
+        if (bug == null || bug.getDeleted() == 1) throw BizException.notFound("Bug");
+        ensureOperable(bug);
+        bug.setDeleted(1);
+        bug.setUpdatedBy(SecurityUtil.getCurrentUserId());
+        bugMapper.updateById(bug);
+    }
+
+    public List<java.util.Map<String, Object>> listComments(Long bugId) {
+        Bug bug = bugMapper.selectById(bugId);
+        if (bug == null || bug.getDeleted() == 1) throw BizException.notFound("Bug");
+        ensureReadable(bug);
+        List<BugComment> list = commentMapper.selectList(
+                new LambdaQueryWrapper<BugComment>()
+                        .eq(BugComment::getBugId, bugId)
+                        .eq(BugComment::getDeleted, 0)
+                        .orderByAsc(BugComment::getCreatedAt));
+        return list.stream().map(c -> {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("bugId", c.getBugId());
+            m.put("userId", c.getUserId());
+            SysUser u = userMapper.selectById(c.getUserId());
+            m.put("username", u != null ? u.getNickname() : null);
+            m.put("content", c.getContent());
+            m.put("createdAt", c.getCreatedAt());
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Long convertToRequirement(Long bugId) {
+        Bug bug = bugMapper.selectById(bugId);
+        if (bug == null || bug.getDeleted() == 1) throw BizException.notFound("Bug");
+        ensureOperable(bug);
+
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        // 创建需求
+        Requirement req = new Requirement();
+        req.setProjectId(bug.getProjectId());
+        req.setTitle(bug.getTitle());
+        req.setDescription(bug.getDescription());
+        req.setPriority("MEDIUM");
+        req.setStatus("DRAFT");
+        req.setAssigneeId(bug.getAssigneeId());
+        req.setSource("BUG#" + bugId);
+        req.setDeleted(0);
+        req.setCreatedBy(userId);
+        req.setUpdatedBy(userId);
+        requirementMapper.insert(req);
+
+        // 关闭 Bug，原因：转为需求
+        bug.setStatus("CLOSED");
+        bug.setResolveType("CONVERTED_TO_REQ");
+        bug.setUpdatedBy(userId);
+        bugMapper.updateById(bug);
+
+        return req.getId();
     }
 
     private void ensureReadable(Bug bug) {

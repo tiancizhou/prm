@@ -15,6 +15,8 @@ public class CreateRequirementRequest {
 
     private Long parentId;
 
+    private Long moduleId;
+
     @NotBlank(message = "需求标题不能为空")
     private String title;
 

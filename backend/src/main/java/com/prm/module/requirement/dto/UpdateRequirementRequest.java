@@ -12,6 +12,8 @@ public class UpdateRequirementRequest {
     @NotBlank(message = "需求标题不能为空")
     private String title;
 
+    private Long moduleId;
+
     private String description;
     private String source;
     private String priority = "MEDIUM";

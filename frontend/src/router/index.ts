@@ -40,14 +40,49 @@ const router = createRouter({
           component: () => import('@/views/requirement/RequirementPage.vue')
         },
         {
+          path: 'projects/:id/requirements/create',
+          name: 'RequirementCreate',
+          component: () => import('@/views/requirement/RequirementCreatePage.vue')
+        },
+        {
+          path: 'projects/:id/requirements/batch-edit',
+          name: 'RequirementBatchEdit',
+          component: () => import('@/views/requirement/RequirementBatchEditPage.vue')
+        },
+        {
+          path: 'projects/:id/requirements/:reqId/edit',
+          name: 'RequirementEdit',
+          component: () => import('@/views/requirement/RequirementEditPage.vue')
+        },
+        {
+          path: 'projects/:id/requirements/:reqId',
+          name: 'RequirementDetail',
+          component: () => import('@/views/requirement/RequirementDetailPage.vue')
+        },
+        {
           path: 'projects/:id/tasks',
           name: 'Tasks',
           component: () => import('@/views/task/TaskPage.vue')
         },
         {
+          path: 'projects/:id/modules',
+          name: 'Modules',
+          component: () => import('@/views/module/ModulePage.vue')
+        },
+        {
           path: 'projects/:id/bugs',
           name: 'Bugs',
           component: () => import('@/views/bug/BugPage.vue')
+        },
+        {
+          path: 'projects/:id/bugs/create',
+          name: 'BugCreate',
+          component: () => import('@/views/bug/BugCreatePage.vue')
+        },
+        {
+          path: 'projects/:id/bugs/:bugId',
+          name: 'BugDetail',
+          component: () => import('@/views/bug/BugDetailPage.vue')
         },
         {
           path: 'projects/:id/sprints',

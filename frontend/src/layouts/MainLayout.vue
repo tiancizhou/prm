@@ -37,6 +37,10 @@
             <el-icon><Document /></el-icon>
             <template #title>{{ layoutText.routeLabels.Requirements }}</template>
           </el-menu-item>
+          <el-menu-item :index="`/projects/${currentProject.id}/modules`">
+            <el-icon><Grid /></el-icon>
+            <template #title>{{ layoutText.routeLabels.Modules }}</template>
+          </el-menu-item>
           <el-menu-item :index="`/projects/${currentProject.id}/bugs`">
             <el-icon><Warning /></el-icon>
             <template #title>{{ layoutText.routeLabels.Bugs }}</template>

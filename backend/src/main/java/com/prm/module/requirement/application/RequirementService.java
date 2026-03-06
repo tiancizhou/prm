@@ -7,12 +7,17 @@ import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
 import com.prm.module.project.entity.ProjectMember;
 import com.prm.module.project.mapper.ProjectMemberMapper;
+import com.prm.module.module.entity.PrmModule;
+import com.prm.module.module.mapper.ModuleMapper;
 import com.prm.module.requirement.domain.RequirementStateMachine;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
+import com.prm.module.requirement.dto.RequirementLogDTO;
 import com.prm.module.requirement.dto.UpdateRequirementRequest;
 import com.prm.module.requirement.entity.Requirement;
+import com.prm.module.requirement.entity.RequirementLog;
 import com.prm.module.requirement.entity.RequirementReview;
+import com.prm.module.requirement.mapper.RequirementLogMapper;
 import com.prm.module.requirement.mapper.RequirementMapper;
 import com.prm.module.requirement.mapper.RequirementReviewMapper;
 import com.prm.module.system.entity.SysUser;
@@ -27,6 +32,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,13 +46,15 @@ public class RequirementService {
 
     private final RequirementMapper requirementMapper;
     private final RequirementReviewMapper reviewMapper;
+    private final RequirementLogMapper logMapper;
     private final RequirementStateMachine stateMachine;
     private final SysUserMapper userMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final ModuleMapper moduleMapper;
 
     public IPage<RequirementDTO> page(int pageNum, int pageSize, Long projectId, String status, String keyword,
                                        Long assigneeId, Long sprintId, Boolean unscheduled,
-                                       LocalDate dueDateFrom, LocalDate dueDateTo, Long parentId) {
+                                       LocalDate dueDateFrom, LocalDate dueDateTo, Long parentId, String moduleIds) {
         Page<Requirement> pageReq = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Requirement> wrapper = new LambdaQueryWrapper<Requirement>()
                 .eq(Requirement::getDeleted, 0)
@@ -111,6 +119,12 @@ public class RequirementService {
         else if (sprintId != null) wrapper.eq(Requirement::getSprintId, sprintId);
         if (dueDateFrom != null) wrapper.ge(Requirement::getDueDate, dueDateFrom);
         if (dueDateTo != null)   wrapper.le(Requirement::getDueDate, dueDateTo);
+        if (StringUtils.hasText(moduleIds)) {
+            List<Long> idList = Arrays.stream(moduleIds.split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty())
+                    .map(Long::parseLong).collect(Collectors.toList());
+            if (!idList.isEmpty()) wrapper.in(Requirement::getModuleId, idList);
+        }
         // 父子需求过滤：指定 parentId 查子需求；不指定则默认只查顶级需求
         if (parentId != null) {
             wrapper.eq(Requirement::getParentId, parentId);
@@ -134,6 +148,7 @@ public class RequirementService {
         Requirement r = new Requirement();
         r.setProjectId(request.getProjectId());
         r.setParentId(request.getParentId());
+        r.setModuleId(request.getModuleId());
         r.setSprintId(request.getSprintId());
         r.setTitle(request.getTitle());
         r.setDescription(request.getDescription());
@@ -150,6 +165,7 @@ public class RequirementService {
         r.setCreatedBy(currentUserId);
         r.setUpdatedBy(currentUserId);
         requirementMapper.insert(r);
+        writeAutoLog(r.getId(), currentUserId, "创建了需求");
         return toDTO(r);
     }
 
@@ -166,6 +182,7 @@ public class RequirementService {
         if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
         ensureRequirementManageable(r);
         r.setTitle(request.getTitle());
+        r.setModuleId(request.getModuleId());
         r.setDescription(request.getDescription());
         r.setSource(request.getSource());
         r.setPriority(request.getPriority() != null ? request.getPriority() : "MEDIUM");
@@ -175,8 +192,10 @@ public class RequirementService {
         r.setAcceptanceCriteria(request.getAcceptanceCriteria());
         r.setStartDate(request.getStartDate());
         r.setDueDate(request.getDueDate());
-        r.setUpdatedBy(SecurityUtil.getCurrentUserId());
+        Long updaterId = SecurityUtil.getCurrentUserId();
+        r.setUpdatedBy(updaterId);
         requirementMapper.updateById(r);
+        writeAutoLog(id, updaterId, "更新了需求信息");
         return toDTO(r);
     }
 
@@ -212,8 +231,11 @@ public class RequirementService {
         }
 
         r.setStatus(newStatus);
-        r.setUpdatedBy(SecurityUtil.getCurrentUserId());
+        Long statusUpdaterId = SecurityUtil.getCurrentUserId();
+        r.setUpdatedBy(statusUpdaterId);
         requirementMapper.updateById(r);
+        String statusLabel = RequirementStateMachine.STATUS_LABELS.getOrDefault(newStatus, newStatus);
+        writeAutoLog(id, statusUpdaterId, "将需求状态变更为「" + statusLabel + "」");
         return toDTO(r);
     }
 
@@ -252,6 +274,11 @@ public class RequirementService {
                         .eq(Requirement::getParentId, r.getId())
                         .eq(Requirement::getDeleted, 0));
         dto.setChildrenCount(childCount != null ? childCount.intValue() : 0);
+        dto.setModuleId(r.getModuleId());
+        if (r.getModuleId() != null) {
+            PrmModule module = moduleMapper.selectById(r.getModuleId());
+            if (module != null) dto.setModuleName(module.getName());
+        }
         dto.setSprintId(r.getSprintId());
         dto.setTitle(r.getTitle());
         dto.setDescription(r.getDescription());
@@ -352,5 +379,63 @@ public class RequirementService {
             throw BizException.of("完成需求时必须填写" + fieldLabel);
         }
         return value.trim();
+    }
+
+    // ---- 需求日志 ----
+
+    private void writeAutoLog(Long requirementId, Long userId, String content) {
+        SysUser user = userMapper.selectById(userId);
+        String username = user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "未知";
+        RequirementLog log = new RequirementLog();
+        log.setRequirementId(requirementId);
+        log.setUserId(userId);
+        log.setUsername(username);
+        log.setLogType("AUTO");
+        log.setContent(content);
+        log.setCreatedAt(LocalDateTime.now());
+        logMapper.insert(log);
+    }
+
+    public List<RequirementLogDTO> listLogs(Long requirementId) {
+        Requirement r = requirementMapper.selectById(requirementId);
+        if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
+        ensureRequirementReadable(r);
+        return logMapper.selectList(
+                new LambdaQueryWrapper<RequirementLog>()
+                        .eq(RequirementLog::getRequirementId, requirementId)
+                        .orderByAsc(RequirementLog::getCreatedAt)
+        ).stream().map(this::toLogDTO).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public RequirementLogDTO addComment(Long requirementId, String content) {
+        Requirement r = requirementMapper.selectById(requirementId);
+        if (r == null || r.getDeleted() == 1) throw BizException.notFound("需求");
+        ensureRequirementReadable(r);
+        if (!StringUtils.hasText(content)) throw BizException.of("备注内容不能为空");
+        Long userId = SecurityUtil.getCurrentUserId();
+        SysUser user = userMapper.selectById(userId);
+        String username = user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "未知";
+        RequirementLog log = new RequirementLog();
+        log.setRequirementId(requirementId);
+        log.setUserId(userId);
+        log.setUsername(username);
+        log.setLogType("COMMENT");
+        log.setContent(content.trim());
+        log.setCreatedAt(LocalDateTime.now());
+        logMapper.insert(log);
+        return toLogDTO(log);
+    }
+
+    private RequirementLogDTO toLogDTO(RequirementLog log) {
+        RequirementLogDTO dto = new RequirementLogDTO();
+        dto.setId(log.getId());
+        dto.setRequirementId(log.getRequirementId());
+        dto.setUserId(log.getUserId());
+        dto.setUsername(log.getUsername());
+        dto.setLogType(log.getLogType());
+        dto.setContent(log.getContent());
+        dto.setCreatedAt(log.getCreatedAt());
+        return dto;
     }
 }

@@ -8,28 +8,22 @@ import java.util.Set;
 
 /**
  * Bug 状态机
- * 新建 -> 已确认 -> 已指派 -> 已解决 -> 已验证 -> 已关闭
- * 支持重开：已关闭 -> 新建
+ * 已激活 -> 已解决 -> 已关闭
+ * 支持重开：已关闭/已解决 -> 已激活
  */
 @Component
 public class BugStateMachine {
 
     private static final Map<String, Set<String>> TRANSITIONS = Map.of(
-            "NEW",       Set.of("CONFIRMED", "CLOSED"),
-            "CONFIRMED", Set.of("ASSIGNED", "CLOSED"),
-            "ASSIGNED",  Set.of("RESOLVED"),
-            "RESOLVED",  Set.of("VERIFIED", "ASSIGNED"),
-            "VERIFIED",  Set.of("CLOSED"),
-            "CLOSED",    Set.of("NEW")
+            "ACTIVE",   Set.of("RESOLVED", "CLOSED"),
+            "RESOLVED", Set.of("CLOSED", "ACTIVE"),
+            "CLOSED",   Set.of("ACTIVE")
     );
 
     public static final Map<String, String> STATUS_LABELS = Map.of(
-            "NEW",       "新建",
-            "CONFIRMED", "已确认",
-            "ASSIGNED",  "已指派",
-            "RESOLVED",  "已解决",
-            "VERIFIED",  "已验证",
-            "CLOSED",    "已关闭"
+            "ACTIVE",   "已激活",
+            "RESOLVED", "已解决",
+            "CLOSED",   "已关闭"
     );
 
     public boolean canTransit(String from, String to) {
