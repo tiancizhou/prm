@@ -160,11 +160,13 @@
               {{ formatDate(row.createdAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="160" align="right" fixed="right">
+          <el-table-column label="操作" width="170" align="center">
             <template #default="{ row }">
-              <el-button v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED'].includes(row.status)" size="small" link type="success" @click="resolve(row)">解决</el-button>
-              <el-button v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED','RESOLVED','VERIFIED'].includes(row.status)" size="small" link type="danger" @click="close(row)">关闭</el-button>
-              <el-button v-if="row.status === 'RESOLVED' || row.status === 'CLOSED' || row.status === 'VERIFIED'" size="small" link type="warning" @click="reopen(row)">重开</el-button>
+              <div class="op-btns">
+                <el-button v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED'].includes(row.status)" size="small" type="success" plain @click.stop="resolve(row)">解决</el-button>
+                <el-button v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED','RESOLVED','VERIFIED'].includes(row.status)" size="small" type="danger" plain @click.stop="close(row)">关闭</el-button>
+                <el-button v-if="['RESOLVED','CLOSED','VERIFIED'].includes(row.status)" size="small" type="warning" plain @click.stop="reopen(row)">重开</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -226,6 +228,119 @@
       <template #footer>
         <el-button @click="showAssign = false">取消</el-button>
         <el-button type="primary" :loading="assigning" @click="submitAssign">指派</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 解决 Bug 对话框 -->
+    <el-dialog v-model="showResolve" :title="`解决Bug  ${resolveTarget?.title ?? ''}  #${resolveTarget?.id ?? ''}`"
+      width="560px" destroy-on-close :close-on-click-modal="false">
+      <el-form ref="resolveFormRef" :model="resolveForm" :rules="resolveRules" label-width="80px" label-position="left">
+        <el-form-item label="解决方案" prop="resolveType" required>
+          <el-select v-model="resolveForm.resolveType" placeholder="请选择" style="width:220px">
+            <el-option label="已修复" value="FIXED" />
+            <el-option label="无法重现" value="WONT_REPRODUCE" />
+            <el-option label="重复Bug" value="DUPLICATE" />
+            <el-option label="设计如此" value="BY_DESIGN" />
+            <el-option label="外部原因" value="EXTERNAL" />
+            <el-option label="挂起" value="SUSPENDED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="解决版本">
+          <el-select v-model="resolveForm.resolvedVersion" placeholder="请选择" clearable style="width:180px">
+            <el-option label="主干" value="TRUNK" />
+            <el-option label="1.0" value="1.0" />
+            <el-option label="2.0" value="2.0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="解决日期">
+          <el-date-picker v-model="resolveForm.resolvedDate" type="datetime" placeholder="选择解决日期"
+            format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:220px" />
+        </el-form-item>
+        <el-form-item label="指派给">
+          <el-select v-model="resolveForm.assigneeId" placeholder="选择成员" clearable style="width:220px">
+            <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="resolveForm.note" type="textarea" :rows="3"
+            placeholder="可以在编辑器直接贴图。" resize="none" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <el-button type="primary" style="display:block;margin:16px auto 0;width:120px" :loading="resolving" @click="submitResolve">
+        解决
+      </el-button>
+      <div class="dlg-history">
+        <div class="dlg-history-title">历史记录</div>
+        <div v-if="dialogComments.length === 0" class="dlg-history-empty">暂无记录</div>
+        <div v-for="(c, i) in dialogComments" :key="c.id" class="dlg-history-item">
+          <span class="dhi-idx">{{ i + 1 }}</span>
+          <span class="dhi-text">{{ fmtDate(c.createdAt) }}，由 <b>{{ c.username || c.userId }}</b> {{ c.content }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showResolve = false">取消</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 关闭 Bug 对话框 -->
+    <el-dialog v-model="showClose" :title="`关闭Bug  ${closeTarget?.title ?? ''}  #${closeTarget?.id ?? ''}`"
+      width="560px" destroy-on-close :close-on-click-modal="false">
+      <el-form :model="closeForm" label-width="80px" label-position="left">
+        <el-form-item label="备注">
+          <el-input v-model="closeForm.note" type="textarea" :rows="4"
+            placeholder="可以在编辑器直接贴图。" resize="none" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <el-button type="primary" style="display:block;margin:16px auto 0;width:120px" :loading="closing" @click="submitClose">
+        关闭
+      </el-button>
+      <div class="dlg-history">
+        <div class="dlg-history-title">历史记录</div>
+        <div v-if="dialogComments.length === 0" class="dlg-history-empty">暂无记录</div>
+        <div v-for="(c, i) in dialogComments" :key="c.id" class="dlg-history-item">
+          <span class="dhi-idx">{{ i + 1 }}</span>
+          <span class="dhi-text">{{ fmtDate(c.createdAt) }}，由 <b>{{ c.username || c.userId }}</b> {{ c.content }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showClose = false">取消</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 激活 Bug 对话框（重开）-->
+    <el-dialog v-model="showReopen" :title="`激活Bug  ${reopenTarget?.title ?? ''}  #${reopenTarget?.id ?? ''}`"
+      width="560px" destroy-on-close :close-on-click-modal="false">
+      <el-form ref="reopenFormRef" :model="reopenForm" :rules="reopenRules" label-width="80px" label-position="left">
+        <el-form-item label="指派给">
+          <el-select v-model="reopenForm.assigneeId" placeholder="选择处理人（可选）" clearable style="width:240px">
+            <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="影响版本" prop="affectedVersion" required>
+          <el-select v-model="reopenForm.affectedVersion" placeholder="请选择" style="width:220px">
+            <el-option label="主干" value="TRUNK" />
+            <el-option label="1.0" value="1.0" />
+            <el-option label="2.0" value="2.0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="reopenForm.note" type="textarea" :rows="3"
+            placeholder="可以在编辑器直接贴图。" resize="none" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <el-button type="primary" style="display:block;margin:16px auto 0;width:120px" :loading="reopening" @click="submitReopen">
+        激活
+      </el-button>
+      <div class="dlg-history">
+        <div class="dlg-history-title">历史记录</div>
+        <div v-if="dialogComments.length === 0" class="dlg-history-empty">暂无记录</div>
+        <div v-for="(c, i) in dialogComments" :key="c.id" class="dlg-history-item">
+          <span class="dhi-idx">{{ i + 1 }}</span>
+          <span class="dhi-text">{{ fmtDate(c.createdAt) }}，由 <b>{{ c.username || c.userId }}</b> {{ c.content }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showReopen = false">取消</el-button>
       </template>
     </el-dialog>
 
@@ -355,7 +470,7 @@ function selectModule(name: string | null) {
 
 // ---- 快速 Tab ----
 const quickTab = ref<'all' | 'unresolved'>('all')
-const UNRESOLVED_STATUSES = ['ACTIVE']
+const UNRESOLVED_STATUSES = ['ACTIVE', 'NEW', 'CONFIRMED', 'ASSIGNED']
 
 // ---- 列表 ----
 const loading = ref(false)
@@ -435,37 +550,131 @@ async function submitAssign() {
   }
 }
 
-// ---- 状态变更 ----
-async function resolve(row: any) {
-  await bugApi.updateStatus(row.id, 'RESOLVED', 'FIXED')
-  ElMessage.success('已标记解决')
-  await load()
+// ---- 弹窗公共历史记录 ----
+const dialogComments = ref<any[]>([])
+async function loadDialogComments(bugId: number) {
+  try {
+    const res = await bugApi.listComments(bugId)
+    dialogComments.value = (res as any).data ?? res ?? []
+  } catch {
+    dialogComments.value = []
+  }
+}
+function fmtDate(val: string) { return val ? String(val).slice(0, 16).replace('T', ' ') : '' }
+
+// ---- 解决弹窗 ----
+const showResolve = ref(false)
+const resolving = ref(false)
+const resolveTarget = ref<any>(null)
+const resolveFormRef = ref()
+const resolveForm = ref({ resolveType: '', resolvedVersion: '', resolvedDate: '', assigneeId: null as number | null, note: '' })
+const resolveRules = { resolveType: [{ required: true, message: '请选择解决方案', trigger: 'change' }] }
+
+function resolve(row: any) {
+  resolveTarget.value = row
+  resolveForm.value = {
+    resolveType: '', resolvedVersion: '',
+    resolvedDate: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    assigneeId: row.assigneeId ?? null, note: ''
+  }
+  dialogComments.value = []
+  showResolve.value = true
+  loadDialogComments(row.id)
+}
+
+async function submitResolve() {
+  await resolveFormRef.value?.validate()
+  resolving.value = true
+  try {
+    if (resolveForm.value.assigneeId && resolveForm.value.assigneeId !== resolveTarget.value?.assigneeId) {
+      await bugApi.assign(resolveTarget.value.id, resolveForm.value.assigneeId)
+    }
+    await bugApi.updateStatus(resolveTarget.value.id, 'RESOLVED', resolveForm.value.resolveType)
+    if (resolveForm.value.note.trim()) {
+      await bugApi.addComment(resolveTarget.value.id, `[解决备注] ${resolveForm.value.note.trim()}`)
+    }
+    showResolve.value = false
+    ElMessage.success('Bug 已标记为解决')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.msg ?? '操作失败')
+  } finally {
+    resolving.value = false
+  }
+}
+
+// ---- 关闭弹窗 ----
+const showClose = ref(false)
+const closing = ref(false)
+const closeTarget = ref<any>(null)
+const closeForm = ref({ note: '' })
+
+function close(row: any) {
+  closeTarget.value = row
+  closeForm.value = { note: '' }
+  dialogComments.value = []
+  showClose.value = true
+  loadDialogComments(row.id)
+}
+
+async function submitClose() {
+  closing.value = true
+  try {
+    await bugApi.updateStatus(closeTarget.value.id, 'CLOSED')
+    if (closeForm.value.note.trim()) {
+      await bugApi.addComment(closeTarget.value.id, `[关闭] ${closeForm.value.note.trim()}`)
+    }
+    showClose.value = false
+    ElMessage.success('Bug 已关闭')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.msg ?? '操作失败')
+  } finally {
+    closing.value = false
+  }
+}
+
+// ---- 激活（重开）弹窗 ----
+const showReopen = ref(false)
+const reopening = ref(false)
+const reopenTarget = ref<any>(null)
+const reopenFormRef = ref()
+const reopenForm = ref({ assigneeId: null as number | null, affectedVersion: '', note: '' })
+const reopenRules = { affectedVersion: [{ required: true, message: '请选择影响版本', trigger: 'change' }] }
+
+function reopen(row: any) {
+  reopenTarget.value = row
+  reopenForm.value = { assigneeId: row.assigneeId ?? null, affectedVersion: '', note: '' }
+  dialogComments.value = []
+  showReopen.value = true
+  loadDialogComments(row.id)
+}
+
+async function submitReopen() {
+  await reopenFormRef.value?.validate()
+  reopening.value = true
+  try {
+    await bugApi.updateStatus(reopenTarget.value.id, 'ACTIVE')
+    if (reopenForm.value.assigneeId && reopenForm.value.assigneeId !== reopenTarget.value?.assigneeId) {
+      await bugApi.assign(reopenTarget.value.id, reopenForm.value.assigneeId)
+    }
+    const parts: string[] = []
+    if (reopenForm.value.affectedVersion) parts.push(`影响版本：${reopenForm.value.affectedVersion}`)
+    if (reopenForm.value.note.trim()) parts.push(reopenForm.value.note.trim())
+    if (parts.length) await bugApi.addComment(reopenTarget.value.id, `[激活] ${parts.join('；')}`)
+    showReopen.value = false
+    ElMessage.success('Bug 已激活')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.msg ?? '操作失败')
+  } finally {
+    reopening.value = false
+  }
 }
 
 async function verify(row: any) {
   await bugApi.updateStatus(row.id, 'CLOSED')
-  ElMessage.success('已关闭')
   await load()
-}
-
-async function close(row: any) {
-  await bugApi.updateStatus(row.id, 'CLOSED')
-  ElMessage.success('已关闭')
-  await load()
-}
-
-async function reopen(row: any) {
-  try {
-    await bugApi.updateStatus(row.id, 'ACTIVE')
-    ElMessage.success('已重开')
-    await load()
-  } catch (e: any) {
-    ElMessage.error(e?.response?.data?.msg ?? '重开失败')
-  }
-}
-
-function canClose(row: any) {
-  return ['ACTIVE', 'NEW', 'CONFIRMED', 'ASSIGNED', 'RESOLVED', 'VERIFIED'].includes(row.status)
 }
 
 // ---- 导出 ----
@@ -809,6 +1018,48 @@ onMounted(async () => {
 .bug-row:hover .inline-assign-btn {
   opacity: 1;
 }
+
+.op-btns {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+/* ---- 弹窗历史记录 ---- */
+.dlg-history {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+.dlg-history-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+}
+.dlg-history-empty {
+  font-size: 13px;
+  color: #9ca3af;
+  padding: 4px 0;
+}
+.dlg-history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px dashed #f3f4f6;
+}
+.dlg-history-item:last-child { border-bottom: none; }
+.dhi-idx {
+  min-width: 20px;
+  color: #9ca3af;
+  font-size: 12px;
+  padding-top: 1px;
+}
+.dhi-text { flex: 1; line-height: 1.5; }
 
 .bug-title {
   font-size: 13px;
