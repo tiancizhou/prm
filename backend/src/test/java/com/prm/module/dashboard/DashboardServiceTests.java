@@ -157,6 +157,44 @@ class DashboardServiceTests {
     }
 
     @Test
+    void memberWithProjectIdShouldStayPersonalView() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
+            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
+                    List.of(member(1001L, 8888L, "DEV")),
+                    List.of()
+            );
+
+            dashboardService.getOverview(1001L);
+
+            ArgumentCaptor<LambdaQueryWrapper<Task>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(taskMapper, times(3)).selectCount(captor.capture());
+            List<Object> values = captor.getAllValues().stream().flatMap(wrapper -> flattenValues(wrapper).stream()).toList();
+            assertThat(values).contains(8888L);
+        }
+    }
+
+    @Test
+    void mixedRoleWithoutProjectIdShouldPreferPersonalScopeAcrossAllMemberships() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
+            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
+                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"), member(1002L, 8888L, "DEV")),
+                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"))
+            );
+
+            dashboardService.getOverview(null);
+
+            ArgumentCaptor<LambdaQueryWrapper<Task>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(taskMapper, times(3)).selectCount(captor.capture());
+            List<Object> values = captor.getAllValues().stream().flatMap(wrapper -> flattenValues(wrapper).stream()).toList();
+            assertThat(values).contains(8888L, 1001L, 1002L);
+        }
+    }
+
+    @Test
     void openBugCountsShouldNotExcludeVerifiedCompatibilityState() {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);

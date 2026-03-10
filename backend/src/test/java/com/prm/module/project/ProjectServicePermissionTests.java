@@ -101,6 +101,40 @@ class ProjectServicePermissionTests {
         }
     }
 
+    @Test
+    void getByIdShouldDenyNonMemberEvenWithSystemProjectAdminRole() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+
+            Project project = new Project();
+            project.setId(1001L);
+            project.setDeleted(0);
+            when(projectMapper.selectById(1001L)).thenReturn(project);
+            when(memberMapper.selectOne(any())).thenReturn(null);
+
+            assertThatThrownBy(() -> projectService.getById(1001L))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("查看");
+        }
+    }
+
+    @Test
+    void getMembersShouldDenyNonMemberEvenWithSystemProjectAdminRole() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(memberMapper.selectOne(any())).thenReturn(null);
+            when(memberMapper.selectList(any())).thenReturn(java.util.List.of());
+
+            assertThatThrownBy(() -> projectService.getMemberVOs(1001L))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("查看");
+        }
+    }
+
     private ProjectMember member(Long projectId, Long userId, String role) {
         ProjectMember projectMember = new ProjectMember();
         projectMember.setProjectId(projectId);

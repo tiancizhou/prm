@@ -10,7 +10,7 @@
         <span class="bug-id-crumb">#{{ bugId }}</span>
         <span class="bug-title-crumb">{{ bug?.title }}</span>
       </div>
-      <el-button type="primary" size="small" :icon="Plus"
+      <el-button v-if="canCreateBug" type="primary" size="small" :icon="Plus"
         @click="$router.push(`/projects/${projectId}/bugs/create`)">
         + 报Bug
       </el-button>
@@ -20,17 +20,17 @@
     <div v-if="bug" class="action-toolbar">
       <!-- 左侧：状态流转主操作 -->
       <div class="toolbar-left">
-        <template v-if="canResolveStatus(bug.status)">
+        <template v-if="canResolveBug()">
           <el-button type="success" size="default" @click="openResolveDialog">
             ✓ 解决
           </el-button>
         </template>
-        <template v-if="canReopenStatus(bug.status)">
+        <template v-if="canReopenBug()">
           <el-button size="default" @click="openReopenDialog">
             ↺ 重开
           </el-button>
         </template>
-        <template v-if="canCloseStatus(bug.status)">
+        <template v-if="canCloseBug()">
           <el-button size="default" type="danger" plain @click="openCloseDialog">
             关闭
           </el-button>
@@ -40,16 +40,17 @@
       <!-- 右侧：辅助操作 -->
       <div class="toolbar-right">
         <el-button
+          v-if="canConvertBug()"
           size="default"
           plain
           @click="confirmConvert"
           :disabled="isClosedStatus(bug.status)"
         >转研发需求</el-button>
-        <el-button size="default" plain :icon="EditPen"
+        <el-button v-if="canOperateBug()" size="default" plain :icon="EditPen"
           @click="$router.push(`/projects/${projectId}/bugs/${bugId}/edit`)">
           编辑
         </el-button>
-        <el-button size="default" plain :icon="Delete" type="danger" @click="handleDelete">
+        <el-button v-if="canOperateBug()" size="default" plain :icon="Delete" type="danger" @click="handleDelete">
           删除
         </el-button>
       </div>
@@ -186,7 +187,7 @@
                 <span class="info-val assignee-val">
                   <span>{{ bug.assigneeName || '未指派' }}</span>
                   <el-button
-                    v-if="!isClosedStatus(bug.status)"
+                    v-if="canAssignBug()"
                     link
                     size="small"
                     type="primary"
@@ -459,11 +460,18 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, EditPen, Delete, ChatLineRound, Warning, UserFilled } from '@element-plus/icons-vue'
 import { bugApi } from '@/api/bug'
 import { projectApi } from '@/api/project'
+import { useAuthStore } from '@/stores/auth'
+import { useProjectStore } from '@/stores/project'
 
 const route = useRoute()
 const router = useRouter()
 const projectId = Number(route.params.id)
 const bugId = Number(route.params.bugId)
+const authStore = useAuthStore()
+const projectStore = useProjectStore()
+const currentUserId = computed(() => authStore.user?.userId ?? null)
+const isProjectManager = computed(() => projectStore.currentProject?.id === projectId && projectStore.currentProject?.canEdit === true)
+const canCreateBug = computed(() => projectStore.currentProject?.id === projectId)
 
 const bug = ref<any>(null)
 const loading = ref(true)
@@ -552,8 +560,11 @@ async function loadProjectName() {
   try {
     const res = await projectApi.get(projectId)
     const d = (res as any).data ?? res
+    projectStore.setCurrentProject(d)
     projectName.value = d?.name ?? ''
-  } catch { /* ignore */ }
+  } catch {
+    projectStore.setCurrentProject(null)
+  }
 }
 
 onMounted(async () => {
@@ -761,6 +772,18 @@ function isClosedStatus(status: string) {
   return normalizeBugStatus(status) === 'CLOSED'
 }
 
+function isAssignee() {
+  return currentUserId.value != null && bug.value?.assigneeId != null && bug.value.assigneeId === currentUserId.value
+}
+
+function canOperateBug() {
+  return isProjectManager.value || isAssignee()
+}
+
+function canAssignBug() {
+  return isProjectManager.value && bug.value != null && !isClosedStatus(bug.value.status)
+}
+
 function canResolveStatus(status: string) {
   return normalizeBugStatus(status) === 'ACTIVE'
 }
@@ -771,6 +794,22 @@ function canCloseStatus(status: string) {
 
 function canReopenStatus(status: string) {
   return ['RESOLVED', 'CLOSED'].includes(normalizeBugStatus(status))
+}
+
+function canResolveBug() {
+  return bug.value != null && canOperateBug() && canResolveStatus(bug.value.status)
+}
+
+function canCloseBug() {
+  return bug.value != null && canOperateBug() && canCloseStatus(bug.value.status)
+}
+
+function canReopenBug() {
+  return bug.value != null && canOperateBug() && canReopenStatus(bug.value.status)
+}
+
+function canConvertBug() {
+  return bug.value != null && isProjectManager.value && !isClosedStatus(bug.value.status)
 }
 
 // ---- Bug的一生 ----

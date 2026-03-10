@@ -65,6 +65,16 @@ public class ProjectService {
         throw BizException.forbidden("无项目编辑权限");
     }
 
+    private void requireReadablePermission(Long projectId) {
+        if (isSuperAdmin()) {
+            return;
+        }
+        if (findMyMembership(projectId) != null) {
+            return;
+        }
+        throw BizException.forbidden("无项目查看权限");
+    }
+
     private void requireCreatePermission() {
         if (isSuperAdmin() || hasProjectAdminRole()) {
             return;
@@ -173,6 +183,7 @@ public class ProjectService {
         if (project == null || project.getDeleted() == 1) {
             throw BizException.notFound("项目");
         }
+        requireReadablePermission(id);
         boolean canEdit = isSuperAdmin() || isProjectManagerOf(id);
         SysUser owner = userMapper.selectById(project.getOwnerId());
         return toDTO(project, owner, canEdit);
@@ -220,11 +231,13 @@ public class ProjectService {
     }
 
     public List<ProjectMember> getMembers(Long projectId) {
+        requireReadablePermission(projectId);
         return memberMapper.selectList(
                 new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, projectId));
     }
 
     public List<ProjectMemberVO> getMemberVOs(Long projectId) {
+        requireReadablePermission(projectId);
         List<ProjectMember> members = memberMapper.selectList(
                 new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, projectId));
         if (members.isEmpty()) {

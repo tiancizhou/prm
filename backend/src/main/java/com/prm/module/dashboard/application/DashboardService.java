@@ -84,16 +84,19 @@ public class DashboardService {
         }
 
         if (projectId != null) {
-            Set<Long> scopedProjectIds = memberProjectIds.contains(projectId) ? Set.of(projectId) : Set.of();
-            return new DashboardScope(scopedProjectIds, false, null);
+            if (!memberProjectIds.contains(projectId)) {
+                return new DashboardScope(Set.of(), true, currentUserId);
+            }
+            boolean managerView = managerProjectIds.contains(projectId);
+            return new DashboardScope(Set.of(projectId), !managerView, managerView ? null : currentUserId);
         }
 
         Set<Long> scopedProjectIds = memberProjectIds;
-        boolean managerView = !managerProjectIds.isEmpty();
-        if (managerView) {
-            scopedProjectIds = managerProjectIds;
+        boolean allProjectsManaged = !managerProjectIds.isEmpty() && managerProjectIds.size() == memberProjectIds.size();
+        if (allProjectsManaged) {
+            return new DashboardScope(managerProjectIds, false, null);
         }
-        return new DashboardScope(scopedProjectIds, !managerView, currentUserId);
+        return new DashboardScope(scopedProjectIds, true, currentUserId);
     }
 
     private OverviewDTO buildOverview(DashboardScope scope) {

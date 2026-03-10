@@ -223,7 +223,7 @@ public class BugService {
     public Long convertToRequirement(Long bugId) {
         Bug bug = bugMapper.selectById(bugId);
         if (bug == null || bug.getDeleted() == 1) throw BizException.notFound("Bug");
-        ensureOperable(bug);
+        ensureProjectManager(bug.getProjectId());
 
         Long userId = SecurityUtil.getCurrentUserId();
 

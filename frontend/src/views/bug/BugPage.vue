@@ -94,7 +94,7 @@
             @change="load"
           />
           <el-button size="small" :icon="Download" @click="handleExport">导出</el-button>
-          <el-button type="primary" size="small" :icon="Plus" @click="router.push(`/projects/${projectId}/bugs/create`)">报Bug</el-button>
+          <el-button v-if="canCreateBug" type="primary" size="small" :icon="Plus" @click="router.push(`/projects/${projectId}/bugs/create`)">报Bug</el-button>
         </div>
       </div>
 
@@ -142,7 +142,7 @@
               <div class="assignee-cell">
                 <span class="assignee-name">{{ row.assigneeName || '未指派' }}</span>
                 <el-button
-                  v-if="!isClosedStatus(row.status)"
+                  v-if="canAssignBug(row)"
                   link
                   size="small"
                   type="primary"
@@ -163,9 +163,9 @@
           <el-table-column label="操作" width="170" align="center">
             <template #default="{ row }">
               <div class="op-btns">
-                <el-button v-if="canResolveStatus(row.status)" size="small" type="success" plain @click.stop="resolve(row)">解决</el-button>
-                <el-button v-if="canCloseStatus(row.status)" size="small" type="danger" plain @click.stop="close(row)">关闭</el-button>
-                <el-button v-if="canReopenStatus(row.status)" size="small" type="warning" plain @click.stop="reopen(row)">重开</el-button>
+                <el-button v-if="canResolveBug(row)" size="small" type="success" plain @click.stop="resolve(row)">解决</el-button>
+                <el-button v-if="canCloseBug(row)" size="small" type="danger" plain @click.stop="close(row)">关闭</el-button>
+                <el-button v-if="canReopenBug(row)" size="small" type="warning" plain @click.stop="reopen(row)">重开</el-button>
               </div>
             </template>
           </el-table-column>
@@ -175,7 +175,7 @@
         <div v-if="!loading && list.length === 0" class="empty-state">
           <div class="empty-icon">🐛</div>
           <p class="empty-text">暂时没有 Bug。</p>
-          <el-button type="primary" :icon="Plus" @click="router.push(`/projects/${projectId}/bugs/create`)">报Bug</el-button>
+          <el-button v-if="canCreateBug" type="primary" :icon="Plus" @click="router.push(`/projects/${projectId}/bugs/create`)">报Bug</el-button>
         </div>
 
         <!-- 分页 -->
@@ -356,10 +356,17 @@ import { ElMessage } from 'element-plus'
 import { bugApi } from '@/api/bug'
 import { moduleApi, type ModuleDTO } from '@/api/module'
 import { projectApi } from '@/api/project'
+import { useAuthStore } from '@/stores/auth'
+import { useProjectStore } from '@/stores/project'
 
 const route = useRoute()
 const router = useRouter()
 const projectId = Number(route.params.id)
+const authStore = useAuthStore()
+const projectStore = useProjectStore()
+const currentUserId = computed(() => authStore.user?.userId ?? null)
+const isProjectManager = computed(() => projectStore.currentProject?.id === projectId && projectStore.currentProject?.canEdit === true)
+const canCreateBug = computed(() => projectStore.currentProject?.id === projectId)
 
 // ---- 侧栏折叠 ----
 const sidebarCollapsed = ref(false)
@@ -425,6 +432,15 @@ async function loadModules() {
   } catch {
     moduleTree.value = []
     modules.value = []
+  }
+}
+
+async function loadProject() {
+  try {
+    const res = await projectApi.get(projectId)
+    projectStore.setCurrentProject((res as any).data ?? res)
+  } catch {
+    projectStore.setCurrentProject(null)
   }
 }
 
@@ -691,6 +707,30 @@ function canReopenStatus(status: string) {
   return ['RESOLVED', 'CLOSED'].includes(normalizeBugStatus(status))
 }
 
+function isAssignee(row: { assigneeId?: number | null }) {
+  return currentUserId.value != null && row.assigneeId != null && row.assigneeId === currentUserId.value
+}
+
+function canOperateBug(row: { assigneeId?: number | null }) {
+  return isProjectManager.value || isAssignee(row)
+}
+
+function canAssignBug(row: { status: string }) {
+  return isProjectManager.value && !isClosedStatus(row.status)
+}
+
+function canResolveBug(row: { status: string; assigneeId?: number | null }) {
+  return canOperateBug(row) && canResolveStatus(row.status)
+}
+
+function canCloseBug(row: { status: string; assigneeId?: number | null }) {
+  return canOperateBug(row) && canCloseStatus(row.status)
+}
+
+function canReopenBug(row: { status: string; assigneeId?: number | null }) {
+  return canOperateBug(row) && canReopenStatus(row.status)
+}
+
 function statusType(s: string): TagType {
   const m: Record<string, TagType> = { ACTIVE: 'warning', RESOLVED: 'success', CLOSED: 'info' }
   return m[normalizeBugStatus(s)] ?? 'info'
@@ -707,7 +747,7 @@ function formatDate(d: string) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadModules(), loadMembers()])
+  await Promise.all([loadProject(), loadModules(), loadMembers()])
   await load()
 })
 </script>

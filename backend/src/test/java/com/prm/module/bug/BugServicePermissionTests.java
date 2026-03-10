@@ -14,6 +14,8 @@ import com.prm.module.bug.mapper.BugCommentMapper;
 import com.prm.module.bug.mapper.BugMapper;
 import com.prm.module.project.entity.ProjectMember;
 import com.prm.module.project.mapper.ProjectMemberMapper;
+import com.prm.module.requirement.entity.Requirement;
+import com.prm.module.requirement.mapper.RequirementMapper;
 import com.prm.module.system.mapper.SysUserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,8 @@ class BugServicePermissionTests {
     private SysUserMapper userMapper;
     @Mock
     private ProjectMemberMapper projectMemberMapper;
+    @Mock
+    private RequirementMapper requirementMapper;
 
     private BugService bugService;
 
@@ -58,7 +62,8 @@ class BugServicePermissionTests {
                 commentMapper,
                 stateMachine,
                 userMapper,
-                projectMemberMapper
+                projectMemberMapper,
+                requirementMapper
         );
 
         lenient().when(bugMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(new Page<Bug>(1, 20));
@@ -178,6 +183,37 @@ class BugServicePermissionTests {
             assertThatThrownBy(() -> bugService.create(request))
                     .isInstanceOf(BizException.class)
                     .hasMessageContaining("提交 Bug");
+        }
+    }
+
+    @Test
+    void convertToRequirementShouldDenyAssigneeWhoIsNotProjectManager() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
+            when(bugMapper.selectById(9001L)).thenReturn(bug(9001L, 1001L, 3001L));
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "DEV"));
+
+            assertThatThrownBy(() -> bugService.convertToRequirement(9001L))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("项目经理");
+
+            verify(requirementMapper, never()).insert(any(Requirement.class));
+        }
+    }
+
+    @Test
+    void convertToRequirementShouldAllowProjectManager() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
+            when(bugMapper.selectById(9001L)).thenReturn(bug(9001L, 1001L, 4001L));
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+
+            assertThatCode(() -> bugService.convertToRequirement(9001L)).doesNotThrowAnyException();
+
+            verify(requirementMapper).insert(any(Requirement.class));
+            verify(bugMapper).updateById(any(Bug.class));
         }
     }
 
