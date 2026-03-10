@@ -23,6 +23,16 @@ class RequirementStateMachineTests {
     }
 
     @Test
+    void inProgressShouldTransitToDone() {
+        assertThat(machine.canTransit("IN_PROGRESS", "DONE")).isTrue();
+    }
+
+    @Test
+    void doneShouldReopenToInProgress() {
+        assertThat(machine.canTransit("DONE", "IN_PROGRESS")).isTrue();
+    }
+
+    @Test
     void reviewingShouldTransitToInProgress() {
         assertThat(machine.canTransit("REVIEWING", "IN_PROGRESS")).isTrue();
     }
@@ -42,5 +52,10 @@ class RequirementStateMachineTests {
         assertThatThrownBy(() -> machine.transit("DRAFT", "DONE"))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("不允许");
+    }
+
+    @Test
+    void inProgressShouldNotTransitBackToDraft() {
+        assertThat(machine.canTransit("IN_PROGRESS", "DRAFT")).isFalse();
     }
 }

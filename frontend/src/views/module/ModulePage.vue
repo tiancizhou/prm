@@ -210,6 +210,7 @@ function addChildInline(parent: ModuleDTO) {
 
 function removeChildRow(idx: number) {
   const row = childRows.value[idx]
+  if (!row) return
   if (row.id !== null) {
     // 已有模块需要确认删除
     ElMessageBox.confirm(

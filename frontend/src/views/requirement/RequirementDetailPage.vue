@@ -232,14 +232,12 @@ const commentText = ref('')
 const commentSubmitting = ref(false)
 
 // ---- 权限 ----
-const currentUserId = computed(() => authStore.user?.id)
-const role = computed(() => {
-  const p = projectStore.currentProject
-  if (!p) return null
-  if (authStore.user?.role === 'SUPER_ADMIN') return 'PROJECT_ADMIN'
-  return p.memberRole ?? null
+const currentUserId = computed(() => authStore.user?.userId)
+const canManage = computed(() => {
+  const roles = authStore.user?.roles ?? []
+  if (roles.includes('SUPER_ADMIN')) return true
+  return projectStore.currentProject?.id === projectId && projectStore.currentProject?.canEdit === true
 })
-const canManage = computed(() => role.value === 'PROJECT_ADMIN')
 const canEdit = computed(() => {
   if (canManage.value) return true
   return req.value?.assigneeId && req.value.assigneeId === currentUserId.value
@@ -248,10 +246,7 @@ const canEdit = computed(() => {
 // ---- 状态流转 ----
 const STATUS_TRANSITIONS: Record<string, { command: string; label: string }[]> = {
   DRAFT: [{ command: 'IN_PROGRESS', label: '开始进行' }],
-  IN_PROGRESS: [
-    { command: 'DONE', label: '标记完成' },
-    { command: 'DRAFT', label: '退回草稿' }
-  ],
+  IN_PROGRESS: [{ command: 'DONE', label: '标记完成' }],
   DONE: [{ command: 'IN_PROGRESS', label: '重新进行' }]
 }
 const nextStatusOpts = computed(() => STATUS_TRANSITIONS[req.value?.status] ?? [])
@@ -374,23 +369,23 @@ function formatDateTime(d: any): string {
   return String(d)
 }
 
-function statusTagType(status: string): '' | 'success' | 'warning' | 'info' | 'danger' {
-  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
+function statusTagType(status: string): 'success' | 'warning' | 'info' | 'danger' {
+  const map: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
     DRAFT: 'info',
-    IN_PROGRESS: '',
+    IN_PROGRESS: 'warning',
     DONE: 'success'
   }
   return map[status] ?? 'info'
 }
 
-function priorityTagType(p: string): '' | 'success' | 'warning' | 'info' | 'danger' {
-  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
+function priorityTagType(p: string): 'success' | 'warning' | 'info' | 'danger' {
+  const map: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
     LOW: 'info',
-    MEDIUM: '',
+    MEDIUM: 'info',
     HIGH: 'warning',
     CRITICAL: 'danger'
   }
-  return map[p] ?? ''
+  return map[p] ?? 'info'
 }
 
 function priorityLabel(p: string): string {

@@ -18,23 +18,34 @@ class BugStateMachineTests {
     }
 
     @Test
-    void newBugCanBeConfirmed() {
-        assertThat(machine.canTransit("NEW", "CONFIRMED")).isTrue();
+    void activeBugCanBeResolved() {
+        assertThat(machine.canTransit("ACTIVE", "RESOLVED")).isTrue();
     }
 
     @Test
-    void confirmedCanBeAssigned() {
-        assertThat(machine.canTransit("CONFIRMED", "ASSIGNED")).isTrue();
+    void activeBugCanBeClosed() {
+        assertThat(machine.canTransit("ACTIVE", "CLOSED")).isTrue();
     }
 
     @Test
-    void closedBugCanReopen() {
-        assertThat(machine.canTransit("CLOSED", "NEW")).isTrue();
+    void resolvedBugCanBeClosed() {
+        assertThat(machine.canTransit("RESOLVED", "CLOSED")).isTrue();
+    }
+
+    @Test
+    void resolvedBugCanReopenToActive() {
+        assertThat(machine.canTransit("RESOLVED", "ACTIVE")).isTrue();
+    }
+
+    @Test
+    void closedBugCanReopenToActive() {
+        assertThat(machine.canTransit("CLOSED", "ACTIVE")).isTrue();
     }
 
     @Test
     void invalidTransitionShouldThrow() {
-        assertThatThrownBy(() -> machine.transit("NEW", "CLOSED_INVALID"))
-                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> machine.transit("ACTIVE", "ACTIVE"))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("不允许");
     }
 }

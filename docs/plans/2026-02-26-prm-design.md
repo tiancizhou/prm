@@ -6,6 +6,20 @@
 
 ---
 
+## 阶段说明（2026-03-09）
+
+以下内容主要描述 PRM 的目标态设计，不完全等同于当前第一阶段已启用能力。
+
+当前第一阶段实现口径以 `docs/plans/2026-03-09-business-alignment-design.md` 为准，特别是：
+
+- Bug 主流程按 `ACTIVE -> RESOLVED -> CLOSED` 收敛，旧状态仅兼容展示
+- Requirement 当前主流程按 `DRAFT -> IN_PROGRESS -> DONE` 收敛，评审流保留为后续阶段能力
+- Release 当前仅视为版本记录能力，未启用 `pm_release_item` 发布闭环
+- `pm_sprint_item`、`pm_requirement_link` 仍属于未启用的跨模块关联能力
+- `pm_operation_log` 当前已覆盖核心写操作的基础审计接线，但字段级 before/after 差异审计仍属后续增强项
+
+---
+
 ## 1. 总体架构与模块边界
 
 ### 1.1 架构形态
@@ -87,16 +101,20 @@
 
 ### 2.4 关键关系
 - 需求 → 任务：一对多
-- 需求 ↔ Bug：多对多（`pm_requirement_link`）
-- Sprint ↔ 需求/任务：多对多（`pm_sprint_item`）
-- Release ↔ 需求/任务/Bug：多对多（`pm_release_item`）
+- 需求 ↔ Bug：多对多（`pm_requirement_link`，目标态设计，第一阶段未启用正式闭环）
+- Sprint ↔ 需求/任务：多对多（`pm_sprint_item`，目标态设计，第一阶段未启用）
+- Release ↔ 需求/任务/Bug：多对多（`pm_release_item`，目标态设计，第一阶段未启用）
 - 附件通过 `biz_type + biz_id` 关联业务实体
 
 ### 2.5 状态机
-- 需求：`草稿 -> 评审中 -> 已立项 -> 开发中 -> 已完成 -> 已关闭`
-- 任务：`待处理 -> 进行中 -> 待验收 -> 已完成 -> 已关闭`
-- Bug：`新建 -> 已确认 -> 已指派 -> 已解决 -> 已验证 -> 已关闭`（支持重开）
-- Sprint：`规划中 -> 进行中 -> 已关闭`
+- 第一阶段当前启用：
+  - 需求：`DRAFT -> IN_PROGRESS -> DONE`
+  - 任务：`TODO -> IN_PROGRESS -> PENDING_REVIEW -> DONE -> CLOSED`
+  - Bug：`ACTIVE -> RESOLVED -> CLOSED`（支持重开）
+  - Sprint：`PLANNING -> ACTIVE -> CLOSED`
+- 目标态扩展：
+  - 需求评审相关状态（如 `REVIEWING / APPROVED / CLOSED`）保留为后续阶段能力或兼容态，不作为第一阶段主流程
+  - Bug 历史状态（如 `NEW / CONFIRMED / ASSIGNED / VERIFIED`）仅用于兼容历史数据展示，不再作为第一阶段主流程状态
 - 每次流转必须落 `pm_operation_log`
 
 ---
@@ -106,11 +124,13 @@
 ### 3.1 API 分组
 - 认证：`/api/auth/login`、`/api/auth/refresh`、`/api/auth/logout`
 - 项目：`/api/projects`、`/api/projects/{id}/members`
-- 需求：`/api/requirements`、`/api/requirements/{id}/review`、`/api/requirements/{id}/status`
+- 需求（第一阶段主用）：`/api/requirements`、`/api/requirements/{id}/status`、`/api/requirements/{id}/logs`
+- 需求评审（保留接口，非第一阶段默认流程）：`/api/requirements/{id}/review`
 - 任务：`/api/tasks`、`/api/tasks/{id}/assign`、`/api/tasks/{id}/worklog`、`/api/tasks/{id}/status`
-- Bug：`/api/bugs`、`/api/bugs/{id}/assign`、`/api/bugs/{id}/resolve`、`/api/bugs/{id}/verify`、`/api/bugs/{id}/reopen`
+- Bug（第一阶段主用）：`/api/bugs`、`/api/bugs/{id}`、`/api/bugs/{id}/status`、`/api/bugs/{id}/assign`、`/api/bugs/{id}/comments`、`/api/bugs/{id}/convert-to-requirement`
 - 迭代/发布：`/api/sprints`、`/api/sprints/{id}/plan`、`/api/sprints/{id}/close`、`/api/releases`
-- 看板：`/api/dashboard/overview`、`/api/dashboard/bug-trend`、`/api/dashboard/burndown`、`/api/dashboard/team-efficiency`
+- 看板（第一阶段主用）：`/api/dashboard/overview`、`/api/dashboard/aggregate`
+- 看板趋势类接口（如 `bug-trend / burndown / team-efficiency`）属于目标态设计，第一阶段未启用
 
 ### 3.2 权限模型（基础 RBAC）
 - 系统角色：`SUPER_ADMIN`、`PROJECT_ADMIN`、`PM`、`DEV`、`QA`、`GUEST`

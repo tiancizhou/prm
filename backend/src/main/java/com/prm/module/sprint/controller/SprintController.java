@@ -2,6 +2,7 @@ package com.prm.module.sprint.controller;
 
 import com.prm.common.result.PageResult;
 import com.prm.common.result.R;
+import com.prm.module.log.annotation.OperLog;
 import com.prm.module.sprint.application.SprintService;
 import com.prm.module.sprint.dto.CreateSprintRequest;
 import com.prm.module.sprint.dto.SprintDTO;
@@ -29,6 +30,7 @@ public class SprintController {
     }
 
     @Operation(summary = "创建迭代")
+    @OperLog(module = "SPRINT", action = "CREATE", bizType = "SPRINT")
     @PostMapping
     public R<SprintDTO> create(@Valid @RequestBody CreateSprintRequest request) {
         return R.ok(sprintService.create(request));
@@ -41,12 +43,14 @@ public class SprintController {
     }
 
     @Operation(summary = "开始迭代")
+    @OperLog(module = "SPRINT", action = "START", bizType = "SPRINT")
     @PostMapping("/{id}/start")
     public R<SprintDTO> start(@PathVariable Long id) {
         return R.ok(sprintService.start(id));
     }
 
     @Operation(summary = "关闭迭代")
+    @OperLog(module = "SPRINT", action = "CLOSE", bizType = "SPRINT")
     @PostMapping("/{id}/close")
     public R<SprintDTO> close(@PathVariable Long id) {
         return R.ok(sprintService.close(id));

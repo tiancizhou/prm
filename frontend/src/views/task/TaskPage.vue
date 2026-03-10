@@ -87,7 +87,7 @@
                   <el-button size="small" link type="primary">{{ taskText.buttons.actions }} <el-icon><ArrowDown /></el-icon></el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item v-for="opt in statusActionOptions" :key="opt.value" :command="`status:${opt.value}`">
+                      <el-dropdown-item v-for="opt in nextStatusOptions(task.status)" :key="opt.value" :command="`status:${opt.value}`">
                         {{ taskText.statusActionPrefix }} {{ opt.label }}
                       </el-dropdown-item>
                       <el-dropdown-item divided command="worklog">{{ taskText.buttons.logWork }}</el-dropdown-item>
@@ -151,7 +151,7 @@
                 <el-button size="small">{{ taskText.buttons.status }} <el-icon><ArrowDown /></el-icon></el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item v-for="opt in statusActionOptions" :key="opt.value" :command="opt.value">{{ opt.label }}</el-dropdown-item>
+                    <el-dropdown-item v-for="opt in nextStatusOptions(row.status)" :key="opt.value" :command="opt.value">{{ opt.label }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -196,7 +196,7 @@
               <el-button size="small">变更状态 <el-icon><ArrowDown /></el-icon></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-for="opt in statusActionOptions" :key="opt.value" :command="opt.value">{{ opt.label }}</el-dropdown-item>
+                  <el-dropdown-item v-for="opt in nextStatusOptions(detailTask.status)" :key="opt.value" :command="opt.value">{{ opt.label }}</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -277,10 +277,12 @@ import { taskApi } from '@/api/task'
 import { TASK_PAGE_I18N } from '@/constants/task'
 import { resolveThemeLocale } from '@/constants/theme'
 import { useAuthStore } from '@/stores/auth'
+import { useProjectStore } from '@/stores/project'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const projectStore = useProjectStore()
 const projectId = Number(route.params.id)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const taskText = TASK_PAGE_I18N[currentLocale]
@@ -294,7 +296,8 @@ const memberOptions = ref<{ userId: number; nickname?: string; username?: string
 
 const isManager = computed(() => {
   const roles: string[] = authStore.user?.roles || []
-  return roles.includes('SUPER_ADMIN') || roles.includes('PROJECT_ADMIN')
+  if (roles.includes('SUPER_ADMIN')) return true
+  return projectStore.currentProject?.id === projectId && projectStore.currentProject?.canEdit === true
 })
 
 const onlyMine = ref(!isManager.value)
@@ -326,12 +329,30 @@ const taskPriorityOptions = [...taskText.taskPriorityOptions]
 const columns = statusActionOptions.map(opt => ({
   status: opt.value,
   label: opt.label,
-  badgeType: ({ TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success' } as const)[opt.value]
+  badgeType: ({ TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success', CLOSED: 'info' } as const)[opt.value]
 }))
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 const priorityTypeMap: Record<string, TagType> = { LOW: 'info', MEDIUM: 'primary', HIGH: 'warning', CRITICAL: 'danger' }
-const taskStatusTypeMap: Record<string, TagType> = { TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success' }
+const taskStatusTypeMap: Record<string, TagType> = { TODO: 'info', IN_PROGRESS: 'warning', PENDING_REVIEW: 'primary', DONE: 'success', CLOSED: 'info' }
+
+function nextStatusOptions(status: string) {
+  const nextValues = status === 'TODO'
+    ? ['IN_PROGRESS']
+    : status === 'IN_PROGRESS'
+      ? ['TODO', 'PENDING_REVIEW']
+      : status === 'PENDING_REVIEW'
+        ? ['IN_PROGRESS', 'DONE']
+        : status === 'DONE'
+          ? ['IN_PROGRESS', 'CLOSED']
+          : status === 'CLOSED'
+            ? ['TODO']
+            : []
+
+  return nextValues
+    .map(value => statusActionOptions.find(option => option.value === value))
+    .filter((option): option is (typeof statusActionOptions)[number] => option != null)
+}
 
 function canOperateTask(task: { assigneeId?: number | null }) {
   if (isManager.value) return true
@@ -414,6 +435,15 @@ async function loadMembers() {
   }
 }
 
+async function loadProject() {
+  try {
+    const response = await projectApi.get(projectId)
+    projectStore.setCurrentProject((response as any).data)
+  } catch {
+    projectStore.setCurrentProject(null)
+  }
+}
+
 async function assignTask(row: any, assigneeId: number | null) {
   try {
     await taskApi.assign(row.id, assigneeId)
@@ -493,6 +523,8 @@ async function submitWorklog() {
 }
 
 onMounted(async () => {
+  await loadProject()
+  onlyMine.value = !isManager.value
   await load()
   void loadRequirements()
   void loadMembers()

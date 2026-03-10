@@ -1,6 +1,6 @@
 import type { ThemeLocale } from './theme'
 
-type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'PENDING_REVIEW' | 'DONE'
+type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'PENDING_REVIEW' | 'DONE' | 'CLOSED'
 
 export const TASK_PAGE_I18N: Record<
   ThemeLocale,
@@ -146,7 +146,8 @@ export const TASK_PAGE_I18N: Record<
       { value: 'TODO', label: '待处理' },
       { value: 'IN_PROGRESS', label: '进行中' },
       { value: 'PENDING_REVIEW', label: '待验收' },
-      { value: 'DONE', label: '已完成' }
+      { value: 'DONE', label: '已完成' },
+      { value: 'CLOSED', label: '已关闭' }
     ],
     taskTypeOptions: [
       { value: 'TASK', label: '任务' },
@@ -162,7 +163,8 @@ export const TASK_PAGE_I18N: Record<
       TODO: '待处理',
       IN_PROGRESS: '进行中',
       PENDING_REVIEW: '待验收',
-      DONE: '已完成'
+      DONE: '已完成',
+      CLOSED: '已关闭'
     },
     priorityLabels: {
       LOW: '低',
@@ -249,7 +251,8 @@ export const TASK_PAGE_I18N: Record<
       { value: 'TODO', label: 'Todo' },
       { value: 'IN_PROGRESS', label: 'In Progress' },
       { value: 'PENDING_REVIEW', label: 'Pending Review' },
-      { value: 'DONE', label: 'Done' }
+      { value: 'DONE', label: 'Done' },
+      { value: 'CLOSED', label: 'Closed' }
     ],
     taskTypeOptions: [
       { value: 'TASK', label: 'Task' },
@@ -265,7 +268,8 @@ export const TASK_PAGE_I18N: Record<
       TODO: 'Todo',
       IN_PROGRESS: 'In Progress',
       PENDING_REVIEW: 'Pending Review',
-      DONE: 'Done'
+      DONE: 'Done',
+      CLOSED: 'Closed'
     },
     priorityLabels: {
       LOW: 'Low',

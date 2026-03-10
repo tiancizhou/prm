@@ -83,21 +83,15 @@ public class DashboardService {
             return new DashboardScope(Set.of(), true, currentUserId);
         }
 
-        Set<Long> scopedProjectIds;
-        if (projectId == null) {
-            scopedProjectIds = memberProjectIds;
-        } else {
-            scopedProjectIds = memberProjectIds.contains(projectId) ? Set.of(projectId) : Set.of();
+        if (projectId != null) {
+            Set<Long> scopedProjectIds = memberProjectIds.contains(projectId) ? Set.of(projectId) : Set.of();
+            return new DashboardScope(scopedProjectIds, false, null);
         }
 
-        boolean managerView;
-        if (projectId != null) {
-            managerView = managerProjectIds.contains(projectId);
-        } else {
-            managerView = !managerProjectIds.isEmpty();
-            if (managerView) {
-                scopedProjectIds = managerProjectIds;
-            }
+        Set<Long> scopedProjectIds = memberProjectIds;
+        boolean managerView = !managerProjectIds.isEmpty();
+        if (managerView) {
+            scopedProjectIds = managerProjectIds;
         }
         return new DashboardScope(scopedProjectIds, !managerView, currentUserId);
     }
@@ -161,12 +155,12 @@ public class DashboardService {
                 new LambdaQueryWrapper<Bug>().eq(Bug::getDeleted, 0)
                         .in(scopedProjectIds != null, Bug::getProjectId, scopedProjectIds)
                         .eq(personalView, Bug::getAssigneeId, currentUserId)
-                        .notIn(Bug::getStatus, List.of("CLOSED", "VERIFIED")));
+                        .notIn(Bug::getStatus, List.of("CLOSED")));
         long criticalOpenBugs = bugMapper.selectCount(
                 new LambdaQueryWrapper<Bug>().eq(Bug::getDeleted, 0)
                         .in(scopedProjectIds != null, Bug::getProjectId, scopedProjectIds)
                         .eq(personalView, Bug::getAssigneeId, currentUserId)
-                        .notIn(Bug::getStatus, List.of("CLOSED", "VERIFIED"))
+                        .notIn(Bug::getStatus, List.of("CLOSED"))
                         .in(Bug::getSeverity, List.of("CRITICAL", "BLOCKER")));
 
         return OverviewDTO.builder()

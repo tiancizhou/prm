@@ -1,6 +1,6 @@
 import type { ThemeLocale } from './theme'
 
-type BugStatus = 'NEW' | 'CONFIRMED' | 'ASSIGNED' | 'RESOLVED' | 'VERIFIED' | 'CLOSED'
+type BugStatus = 'ACTIVE' | 'RESOLVED' | 'CLOSED'
 type BugSeverity = 'BLOCKER' | 'CRITICAL' | 'NORMAL' | 'MINOR'
 
 export const BUG_PAGE_I18N: Record<
@@ -12,7 +12,6 @@ export const BUG_PAGE_I18N: Record<
       submitBug: string
       assign: string
       resolve: string
-      verify: string
       cancel: string
       submit: string
     }
@@ -64,7 +63,6 @@ export const BUG_PAGE_I18N: Record<
       submitSuccess: string
       assignSuccess: string
       resolveSuccess: string
-      verifySuccess: string
       assigneeIdInvalid: string
     }
   }
@@ -76,7 +74,6 @@ export const BUG_PAGE_I18N: Record<
       submitBug: '提交 Bug',
       assign: '指派',
       resolve: '解决',
-      verify: '验证',
       cancel: '取消',
       submit: '提交'
     },
@@ -120,11 +117,8 @@ export const BUG_PAGE_I18N: Record<
       assignMessage: '请输入处理人用户 ID'
     },
     statusOptions: [
-      { value: 'NEW', label: '新建' },
-      { value: 'CONFIRMED', label: '已确认' },
-      { value: 'ASSIGNED', label: '已指派' },
+      { value: 'ACTIVE', label: '已激活' },
       { value: 'RESOLVED', label: '已解决' },
-      { value: 'VERIFIED', label: '已验证' },
       { value: 'CLOSED', label: '已关闭' }
     ],
     severityOptions: [
@@ -139,11 +133,8 @@ export const BUG_PAGE_I18N: Record<
       { value: 'LOW', label: '低' }
     ],
     statusLabels: {
-      NEW: '新建',
-      CONFIRMED: '已确认',
-      ASSIGNED: '已指派',
+      ACTIVE: '已激活',
       RESOLVED: '已解决',
-      VERIFIED: '已验证',
       CLOSED: '已关闭'
     },
     severityLabels: {
@@ -156,7 +147,6 @@ export const BUG_PAGE_I18N: Record<
       submitSuccess: '提交成功',
       assignSuccess: '已指派',
       resolveSuccess: '已标记解决',
-      verifySuccess: '已验证',
       assigneeIdInvalid: '请输入有效的数字用户 ID'
     }
   },
@@ -167,7 +157,6 @@ export const BUG_PAGE_I18N: Record<
       submitBug: 'Submit Bug',
       assign: 'Assign',
       resolve: 'Resolve',
-      verify: 'Verify',
       cancel: 'Cancel',
       submit: 'Submit'
     },
@@ -211,11 +200,8 @@ export const BUG_PAGE_I18N: Record<
       assignMessage: 'Please enter assignee user ID'
     },
     statusOptions: [
-      { value: 'NEW', label: 'New' },
-      { value: 'CONFIRMED', label: 'Confirmed' },
-      { value: 'ASSIGNED', label: 'Assigned' },
+      { value: 'ACTIVE', label: 'Active' },
       { value: 'RESOLVED', label: 'Resolved' },
-      { value: 'VERIFIED', label: 'Verified' },
       { value: 'CLOSED', label: 'Closed' }
     ],
     severityOptions: [
@@ -230,11 +216,8 @@ export const BUG_PAGE_I18N: Record<
       { value: 'LOW', label: 'Low' }
     ],
     statusLabels: {
-      NEW: 'New',
-      CONFIRMED: 'Confirmed',
-      ASSIGNED: 'Assigned',
+      ACTIVE: 'Active',
       RESOLVED: 'Resolved',
-      VERIFIED: 'Verified',
       CLOSED: 'Closed'
     },
     severityLabels: {
@@ -247,9 +230,7 @@ export const BUG_PAGE_I18N: Record<
       submitSuccess: 'Submitted successfully',
       assignSuccess: 'Assigned',
       resolveSuccess: 'Marked as resolved',
-      verifySuccess: 'Verified',
       assigneeIdInvalid: 'Please input a valid numeric user ID'
     }
   }
 }
-

@@ -142,7 +142,7 @@
               <div class="assignee-cell">
                 <span class="assignee-name">{{ row.assigneeName || '未指派' }}</span>
                 <el-button
-                  v-if="row.status !== 'CLOSED'"
+                  v-if="!isClosedStatus(row.status)"
                   link
                   size="small"
                   type="primary"
@@ -163,9 +163,9 @@
           <el-table-column label="操作" width="170" align="center">
             <template #default="{ row }">
               <div class="op-btns">
-                <el-button v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED'].includes(row.status)" size="small" type="success" plain @click.stop="resolve(row)">解决</el-button>
-                <el-button v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED','RESOLVED','VERIFIED'].includes(row.status)" size="small" type="danger" plain @click.stop="close(row)">关闭</el-button>
-                <el-button v-if="['RESOLVED','CLOSED','VERIFIED'].includes(row.status)" size="small" type="warning" plain @click.stop="reopen(row)">重开</el-button>
+                <el-button v-if="canResolveStatus(row.status)" size="small" type="success" plain @click.stop="resolve(row)">解决</el-button>
+                <el-button v-if="canCloseStatus(row.status)" size="small" type="danger" plain @click.stop="close(row)">关闭</el-button>
+                <el-button v-if="canReopenStatus(row.status)" size="small" type="warning" plain @click.stop="reopen(row)">重开</el-button>
               </div>
             </template>
           </el-table-column>
@@ -245,13 +245,6 @@
             <el-option label="挂起" value="SUSPENDED" />
           </el-select>
         </el-form-item>
-        <el-form-item label="解决版本">
-          <el-select v-model="resolveForm.resolvedVersion" placeholder="请选择" clearable style="width:180px">
-            <el-option label="主干" value="TRUNK" />
-            <el-option label="1.0" value="1.0" />
-            <el-option label="2.0" value="2.0" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="解决日期">
           <el-date-picker v-model="resolveForm.resolvedDate" type="datetime" placeholder="选择解决日期"
             format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:220px" />
@@ -310,17 +303,10 @@
     <!-- 激活 Bug 对话框（重开）-->
     <el-dialog v-model="showReopen" :title="`激活Bug  ${reopenTarget?.title ?? ''}  #${reopenTarget?.id ?? ''}`"
       width="560px" destroy-on-close :close-on-click-modal="false">
-      <el-form ref="reopenFormRef" :model="reopenForm" :rules="reopenRules" label-width="80px" label-position="left">
+      <el-form :model="reopenForm" label-width="80px" label-position="left">
         <el-form-item label="指派给">
           <el-select v-model="reopenForm.assigneeId" placeholder="选择处理人（可选）" clearable style="width:240px">
             <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="影响版本" prop="affectedVersion" required>
-          <el-select v-model="reopenForm.affectedVersion" placeholder="请选择" style="width:220px">
-            <el-option label="主干" value="TRUNK" />
-            <el-option label="1.0" value="1.0" />
-            <el-option label="2.0" value="2.0" />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -389,8 +375,8 @@ const moduleDisplayCol = computed(() => moduleDisplayMode.value !== 'none')
 function moduleDisplayText(module: string): string {
   if (!module) return '—'
   const parts = module.split('/')
-  if (moduleDisplayMode.value === 'first') return parts[0]
-  if (moduleDisplayMode.value === 'last') return parts[parts.length - 1]
+  if (moduleDisplayMode.value === 'first') return parts[0] ?? module
+  if (moduleDisplayMode.value === 'last') return parts[parts.length - 1] ?? module
   return module
 }
 
@@ -470,7 +456,7 @@ function selectModule(name: string | null) {
 
 // ---- 快速 Tab ----
 const quickTab = ref<'all' | 'unresolved'>('all')
-const UNRESOLVED_STATUSES = ['ACTIVE', 'NEW', 'CONFIRMED', 'ASSIGNED']
+const UNRESOLVED_STATUSES = ['ACTIVE', 'RESOLVED']
 
 // ---- 列表 ----
 const loading = ref(false)
@@ -492,16 +478,13 @@ async function load() {
         ? collectModuleNames(selectedModule.value, moduleTree.value).join(',')
         : undefined
     }
-    if (quickTab.value === 'unresolved') {
-      params.statuses = UNRESOLVED_STATUSES.join(',')
-    }
     const res = await bugApi.list(params)
     const data = (res as any).data
     let records: any[] = data.records ?? []
 
     // 前端过滤 unresolved（后端若不支持 statuses 参数则降级）
     if (quickTab.value === 'unresolved') {
-      records = records.filter(r => UNRESOLVED_STATUSES.includes(r.status))
+      records = records.filter(r => UNRESOLVED_STATUSES.includes(normalizeBugStatus(r.status)))
     }
     list.value = records
     total.value = quickTab.value === 'unresolved' ? records.length : (data.total ?? records.length)
@@ -567,13 +550,13 @@ const showResolve = ref(false)
 const resolving = ref(false)
 const resolveTarget = ref<any>(null)
 const resolveFormRef = ref()
-const resolveForm = ref({ resolveType: '', resolvedVersion: '', resolvedDate: '', assigneeId: null as number | null, note: '' })
+const resolveForm = ref({ resolveType: '', resolvedDate: '', assigneeId: null as number | null, note: '' })
 const resolveRules = { resolveType: [{ required: true, message: '请选择解决方案', trigger: 'change' }] }
 
 function resolve(row: any) {
   resolveTarget.value = row
   resolveForm.value = {
-    resolveType: '', resolvedVersion: '',
+    resolveType: '',
     resolvedDate: new Date().toISOString().slice(0, 16).replace('T', ' '),
     assigneeId: row.assigneeId ?? null, note: ''
   }
@@ -638,20 +621,17 @@ async function submitClose() {
 const showReopen = ref(false)
 const reopening = ref(false)
 const reopenTarget = ref<any>(null)
-const reopenFormRef = ref()
-const reopenForm = ref({ assigneeId: null as number | null, affectedVersion: '', note: '' })
-const reopenRules = { affectedVersion: [{ required: true, message: '请选择影响版本', trigger: 'change' }] }
+const reopenForm = ref({ assigneeId: null as number | null, note: '' })
 
 function reopen(row: any) {
   reopenTarget.value = row
-  reopenForm.value = { assigneeId: row.assigneeId ?? null, affectedVersion: '', note: '' }
+  reopenForm.value = { assigneeId: row.assigneeId ?? null, note: '' }
   dialogComments.value = []
   showReopen.value = true
   loadDialogComments(row.id)
 }
 
 async function submitReopen() {
-  await reopenFormRef.value?.validate()
   reopening.value = true
   try {
     await bugApi.updateStatus(reopenTarget.value.id, 'ACTIVE')
@@ -659,7 +639,6 @@ async function submitReopen() {
       await bugApi.assign(reopenTarget.value.id, reopenForm.value.assigneeId)
     }
     const parts: string[] = []
-    if (reopenForm.value.affectedVersion) parts.push(`影响版本：${reopenForm.value.affectedVersion}`)
     if (reopenForm.value.note.trim()) parts.push(reopenForm.value.note.trim())
     if (parts.length) await bugApi.addComment(reopenTarget.value.id, `[激活] ${parts.join('；')}`)
     showReopen.value = false
@@ -672,22 +651,17 @@ async function submitReopen() {
   }
 }
 
-async function verify(row: any) {
-  await bugApi.updateStatus(row.id, 'CLOSED')
-  await load()
-}
-
 // ---- 导出 ----
 function handleExport() {
   ElMessage.info('导出功能即将上线')
 }
 
 // ---- 辅助函数 ----
-type TagType = '' | 'success' | 'warning' | 'info' | 'danger'
+type TagType = 'success' | 'warning' | 'info' | 'danger'
 
 function severityType(s: string): TagType {
-  const m: Record<string, TagType> = { BLOCKER: 'danger', CRITICAL: 'warning', NORMAL: '', MINOR: 'info' }
-  return m[s] ?? ''
+  const m: Record<string, TagType> = { BLOCKER: 'danger', CRITICAL: 'warning', NORMAL: 'info', MINOR: 'info' }
+  return m[s] ?? 'info'
 }
 
 function severityLabel(s: string) {
@@ -695,20 +669,36 @@ function severityLabel(s: string) {
   return m[s] ?? s
 }
 
+function normalizeBugStatus(status: string) {
+  if (['NEW', 'CONFIRMED', 'ASSIGNED'].includes(status)) return 'ACTIVE'
+  if (status === 'VERIFIED') return 'RESOLVED'
+  return status
+}
+
+function isClosedStatus(status: string) {
+  return normalizeBugStatus(status) === 'CLOSED'
+}
+
+function canResolveStatus(status: string) {
+  return normalizeBugStatus(status) === 'ACTIVE'
+}
+
+function canCloseStatus(status: string) {
+  return ['ACTIVE', 'RESOLVED'].includes(normalizeBugStatus(status))
+}
+
+function canReopenStatus(status: string) {
+  return ['RESOLVED', 'CLOSED'].includes(normalizeBugStatus(status))
+}
+
 function statusType(s: string): TagType {
-  const m: Record<string, TagType> = {
-    ACTIVE: 'warning', RESOLVED: 'success', CLOSED: 'info',
-    NEW: 'warning', CONFIRMED: 'warning', ASSIGNED: 'warning', VERIFIED: 'info'
-  }
-  return m[s] ?? 'info'
+  const m: Record<string, TagType> = { ACTIVE: 'warning', RESOLVED: 'success', CLOSED: 'info' }
+  return m[normalizeBugStatus(s)] ?? 'info'
 }
 
 function statusLabel(s: string) {
-  const m: Record<string, string> = {
-    ACTIVE: '已激活', RESOLVED: '已解决', CLOSED: '已关闭',
-    NEW: '已激活', CONFIRMED: '已激活', ASSIGNED: '已激活', VERIFIED: '已关闭'
-  }
-  return m[s] ?? s
+  const m: Record<string, string> = { ACTIVE: '已激活', RESOLVED: '已解决', CLOSED: '已关闭' }
+  return m[normalizeBugStatus(s)] ?? s
 }
 
 function formatDate(d: string) {

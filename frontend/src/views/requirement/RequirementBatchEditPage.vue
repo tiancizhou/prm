@@ -119,9 +119,9 @@ const priorityOptions = [
   { value: 'CRITICAL', label: '紧急' }
 ]
 
-type TagType = '' | 'success' | 'warning' | 'info' | 'danger'
+type TagType = 'success' | 'warning' | 'info' | 'danger'
 function statusTagType(status: string): TagType {
-  const map: Record<string, TagType> = { DRAFT: 'info', IN_PROGRESS: '', DONE: 'success' }
+  const map: Record<string, TagType> = { DRAFT: 'info', IN_PROGRESS: 'warning', DONE: 'success' }
   return map[status] ?? 'info'
 }
 

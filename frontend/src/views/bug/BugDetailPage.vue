@@ -20,17 +20,17 @@
     <div v-if="bug" class="action-toolbar">
       <!-- 左侧：状态流转主操作 -->
       <div class="toolbar-left">
-        <template v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED'].includes(bug.status)">
+        <template v-if="canResolveStatus(bug.status)">
           <el-button type="success" size="default" @click="openResolveDialog">
             ✓ 解决
           </el-button>
         </template>
-        <template v-if="['RESOLVED','CLOSED','VERIFIED'].includes(bug.status)">
+        <template v-if="canReopenStatus(bug.status)">
           <el-button size="default" @click="openReopenDialog">
             ↺ 重开
           </el-button>
         </template>
-        <template v-if="['ACTIVE','NEW','CONFIRMED','ASSIGNED','RESOLVED','VERIFIED'].includes(bug.status)">
+        <template v-if="canCloseStatus(bug.status)">
           <el-button size="default" type="danger" plain @click="openCloseDialog">
             关闭
           </el-button>
@@ -43,7 +43,7 @@
           size="default"
           plain
           @click="confirmConvert"
-          :disabled="bug.status === 'CLOSED'"
+          :disabled="isClosedStatus(bug.status)"
         >转研发需求</el-button>
         <el-button size="default" plain :icon="EditPen"
           @click="$router.push(`/projects/${projectId}/bugs/${bugId}/edit`)">
@@ -186,7 +186,7 @@
                 <span class="info-val assignee-val">
                   <span>{{ bug.assigneeName || '未指派' }}</span>
                   <el-button
-                    v-if="bug.status !== 'CLOSED'"
+                    v-if="!isClosedStatus(bug.status)"
                     link
                     size="small"
                     type="primary"
@@ -309,14 +309,6 @@
             <el-option label="挂起" value="SUSPENDED" />
           </el-select>
         </el-form-item>
-        <el-form-item label="解决版本">
-          <el-select v-model="resolveForm.resolvedVersion" placeholder="请选择" clearable style="width:180px">
-            <el-option label="主干" value="TRUNK" />
-            <el-option label="1.0" value="1.0" />
-            <el-option label="2.0" value="2.0" />
-          </el-select>
-          <el-checkbox v-model="resolveForm.createVersion" label="创建" style="margin-left:10px" />
-        </el-form-item>
         <el-form-item label="解决日期">
           <el-date-picker
             v-model="resolveForm.resolvedDate"
@@ -370,17 +362,10 @@
       width="600px"
       :close-on-click-modal="false"
     >
-      <el-form ref="reopenFormRef" :model="reopenForm" :rules="reopenRules" label-width="80px" label-position="left">
+      <el-form :model="reopenForm" label-width="80px" label-position="left">
         <el-form-item label="指派给">
           <el-select v-model="reopenForm.assigneeId" placeholder="选择处理人（可选）" clearable style="width:260px">
             <el-option v-for="m in members" :key="m.userId" :label="m.nickname || m.username" :value="m.userId" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="影响版本" prop="affectedVersion" required>
-          <el-select v-model="reopenForm.affectedVersion" placeholder="请选择" style="width:260px">
-            <el-option label="主干" value="TRUNK" />
-            <el-option label="1.0" value="1.0" />
-            <el-option label="2.0" value="2.0" />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -509,8 +494,6 @@ const resolving = ref(false)
 const resolveFormRef = ref()
 const resolveForm = ref({
   resolveType: '',
-  resolvedVersion: '',
-  createVersion: false,
   resolvedDate: '',
   assigneeId: null as number | null,
   note: ''
@@ -522,15 +505,10 @@ const resolveRules = {
 // 重开（激活）
 const reopenVisible = ref(false)
 const reopening = ref(false)
-const reopenFormRef = ref()
 const reopenForm = ref({
   assigneeId: null as number | null,
-  affectedVersion: '',
   note: ''
 })
-const reopenRules = {
-  affectedVersion: [{ required: true, message: '请选择影响版本', trigger: 'change' }]
-}
 
 // 关闭
 const closeVisible = ref(false)
@@ -606,8 +584,6 @@ function openAssignDialog() {
 function openResolveDialog() {
   resolveForm.value = {
     resolveType: '',
-    resolvedVersion: '',
-    createVersion: false,
     resolvedDate: new Date().toISOString().slice(0, 16).replace('T', ' '),
     assigneeId: bug.value?.assigneeId ?? null,
     note: ''
@@ -664,12 +640,11 @@ async function submitAssign() {
 
 // ---- 激活（重开）----
 function openReopenDialog() {
-  reopenForm.value = { assigneeId: bug.value?.assigneeId ?? null, affectedVersion: '', note: '' }
+  reopenForm.value = { assigneeId: bug.value?.assigneeId ?? null, note: '' }
   reopenVisible.value = true
 }
 
 async function submitReopen() {
-  await reopenFormRef.value?.validate()
   reopening.value = true
   try {
     await bugApi.updateStatus(bugId, 'ACTIVE')
@@ -677,7 +652,6 @@ async function submitReopen() {
       await bugApi.assign(bugId, reopenForm.value.assigneeId)
     }
     const parts: string[] = []
-    if (reopenForm.value.affectedVersion) parts.push(`影响版本：${reopenForm.value.affectedVersion}`)
     if (reopenForm.value.note.trim()) parts.push(reopenForm.value.note.trim())
     if (parts.length) await bugApi.addComment(bugId, `[激活] ${parts.join('；')}`)
     reopenVisible.value = false
@@ -777,6 +751,28 @@ function goBack() {
   router.push(`/projects/${projectId}/bugs`)
 }
 
+function normalizeBugStatus(status: string) {
+  if (['NEW', 'CONFIRMED', 'ASSIGNED'].includes(status)) return 'ACTIVE'
+  if (status === 'VERIFIED') return 'RESOLVED'
+  return status
+}
+
+function isClosedStatus(status: string) {
+  return normalizeBugStatus(status) === 'CLOSED'
+}
+
+function canResolveStatus(status: string) {
+  return normalizeBugStatus(status) === 'ACTIVE'
+}
+
+function canCloseStatus(status: string) {
+  return ['ACTIVE', 'RESOLVED'].includes(normalizeBugStatus(status))
+}
+
+function canReopenStatus(status: string) {
+  return ['RESOLVED', 'CLOSED'].includes(normalizeBugStatus(status))
+}
+
 // ---- Bug的一生 ----
 const STATUS_ORDER = ['ACTIVE', 'RESOLVED', 'CLOSED']
 const STATUS_LABELS: Record<string, string> = {
@@ -787,15 +783,18 @@ const lifeSteps = computed(() => STATUS_ORDER.map(s => ({
   label: STATUS_LABELS[s],
   time: s === 'ACTIVE' ? bug.value?.createdAt
       : s === 'RESOLVED' ? bug.value?.resolvedAt
-      : s === 'CLOSED' ? bug.value?.closedAt
       : null
 })))
 
+function normalizeLifecycleStatus(status: string) {
+  return normalizeBugStatus(status)
+}
+
 function currentStatusIdx() {
-  return STATUS_ORDER.indexOf(bug.value?.status ?? 'ACTIVE')
+  return STATUS_ORDER.indexOf(normalizeLifecycleStatus(bug.value?.status ?? 'ACTIVE'))
 }
 function isActiveStatus(s: string) {
-  return s === bug.value?.status
+  return s === normalizeLifecycleStatus(bug.value?.status ?? 'ACTIVE')
 }
 function isDoneStatus(s: string) {
   return STATUS_ORDER.indexOf(s) < currentStatusIdx()
@@ -814,7 +813,9 @@ const SEVERITY_MAP: Record<string, { label: string; type: string }> = {
   MINOR:    { label: '轻微', type: 'info' }
 }
 function severityLabel(v: string) { return SEVERITY_MAP[v]?.label ?? v }
-function severityType(v: string)  { return SEVERITY_MAP[v]?.type ?? '' }
+function severityType(v: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' | undefined {
+  return SEVERITY_MAP[v]?.type as 'primary' | 'success' | 'info' | 'warning' | 'danger' | undefined
+}
 
 const PRIORITY_MAP: Record<string, { label: string; type: string }> = {
   CRITICAL: { label: '紧急', type: 'danger' },
@@ -823,18 +824,19 @@ const PRIORITY_MAP: Record<string, { label: string; type: string }> = {
   LOW:      { label: '低',   type: 'info' }
 }
 function priorityLabel(v: string) { return PRIORITY_MAP[v]?.label ?? v }
-function priorityType(v: string)  { return PRIORITY_MAP[v]?.type ?? '' }
+function priorityType(v: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' | undefined {
+  return PRIORITY_MAP[v]?.type as 'primary' | 'success' | 'info' | 'warning' | 'danger' | undefined
+}
 
-const STATUS_TYPE: Record<string, string> = {
-  ACTIVE: 'warning', RESOLVED: 'success', CLOSED: 'info',
-  NEW: 'warning', CONFIRMED: 'warning', ASSIGNED: 'warning', VERIFIED: 'info'
+const STATUS_TYPE: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'danger'> = {
+  ACTIVE: 'warning', RESOLVED: 'success', CLOSED: 'info'
 }
-const STATUS_LABELS_COMPAT: Record<string, string> = {
-  ...STATUS_LABELS,
-  NEW: '已激活', CONFIRMED: '已激活', ASSIGNED: '已激活', VERIFIED: '已关闭'
+function statusLabel(v: string) {
+  return STATUS_LABELS[normalizeBugStatus(v)] ?? v
 }
-function statusLabel(v: string) { return STATUS_LABELS_COMPAT[v] ?? v }
-function statusType(v: string)  { return STATUS_TYPE[v] ?? '' }
+function statusType(v: string): 'primary' | 'success' | 'info' | 'warning' | 'danger' | undefined {
+  return STATUS_TYPE[normalizeBugStatus(v)]
+}
 
 const RESOLVE_TYPE_LABELS: Record<string, string> = {
   FIXED: '已修复', WONT_REPRODUCE: '无法重现', DUPLICATE: '重复Bug',

@@ -153,8 +153,6 @@ public class BugService {
         if ("RESOLVED".equals(newStatus)) {
             bug.setResolveType(resolveType);
             bug.setResolvedAt(LocalDateTime.now());
-        } else if ("VERIFIED".equals(newStatus)) {
-            bug.setVerifiedAt(LocalDateTime.now());
         }
         bug.setUpdatedBy(SecurityUtil.getCurrentUserId());
         bugMapper.updateById(bug);

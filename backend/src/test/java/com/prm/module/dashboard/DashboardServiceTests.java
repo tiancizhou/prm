@@ -20,12 +20,14 @@ import com.prm.module.task.mapper.TaskMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -155,6 +157,27 @@ class DashboardServiceTests {
     }
 
     @Test
+    void openBugCountsShouldNotExcludeVerifiedCompatibilityState() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
+            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
+                    List.of(member(1001L, 8888L, "PROJECT_ADMIN")),
+                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"))
+            );
+
+            dashboardService.getOverview(null);
+
+            ArgumentCaptor<LambdaQueryWrapper<Bug>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(bugMapper, times(3)).selectCount(captor.capture());
+            List<LambdaQueryWrapper<Bug>> wrappers = captor.getAllValues();
+
+            assertThat(flattenValues(wrappers.get(1))).contains("CLOSED").doesNotContain("VERIFIED");
+            assertThat(flattenValues(wrappers.get(2))).contains("CLOSED", "CRITICAL", "BLOCKER").doesNotContain("VERIFIED");
+        }
+    }
+
+    @Test
     void aggregatePermissionShouldDenyNonAdminUser() {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
@@ -184,5 +207,23 @@ class DashboardServiceTests {
         member.setUserId(userId);
         member.setRole(role);
         return member;
+    }
+
+    private List<Object> flattenValues(LambdaQueryWrapper<?> wrapper) {
+        return wrapper.getParamNameValuePairs().values().stream()
+                .flatMap(value -> value instanceof Iterable<?> iterable
+                        ? StreamSupportShim.stream(iterable)
+                        : Stream.of(value))
+                .toList();
+    }
+
+    private static final class StreamSupportShim {
+        private StreamSupportShim() {
+        }
+
+        private static Stream<Object> stream(Iterable<?> iterable) {
+            return java.util.stream.StreamSupport.stream(iterable.spliterator(), false)
+                    .map(value -> (Object) value);
+        }
     }
 }

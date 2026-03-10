@@ -2,6 +2,7 @@ package com.prm.module.project.controller;
 
 import com.prm.common.result.PageResult;
 import com.prm.common.result.R;
+import com.prm.module.log.annotation.OperLog;
 import com.prm.module.project.application.ProjectService;
 import com.prm.module.project.dto.CreateProjectRequest;
 import com.prm.module.project.dto.ProjectDTO;
@@ -33,6 +34,7 @@ public class ProjectController {
     }
 
     @Operation(summary = "创建项目")
+    @OperLog(module = "PROJECT", action = "CREATE", bizType = "PROJECT")
     @PostMapping
     public R<ProjectDTO> create(@Valid @RequestBody CreateProjectRequest request) {
         return R.ok(projectService.create(request));
@@ -45,12 +47,14 @@ public class ProjectController {
     }
 
     @Operation(summary = "更新项目")
+    @OperLog(module = "PROJECT", action = "UPDATE", bizType = "PROJECT")
     @PutMapping("/{id}")
     public R<ProjectDTO> update(@PathVariable Long id, @Valid @RequestBody CreateProjectRequest request) {
         return R.ok(projectService.update(id, request));
     }
 
     @Operation(summary = "归档项目")
+    @OperLog(module = "PROJECT", action = "ARCHIVE", bizType = "PROJECT")
     @PostMapping("/{id}/archive")
     public R<Void> archive(@PathVariable Long id) {
         projectService.archive(id);
@@ -58,6 +62,7 @@ public class ProjectController {
     }
 
     @Operation(summary = "关闭项目")
+    @OperLog(module = "PROJECT", action = "CLOSE", bizType = "PROJECT")
     @PostMapping("/{id}/close")
     public R<Void> close(@PathVariable Long id) {
         projectService.close(id);
@@ -71,6 +76,7 @@ public class ProjectController {
     }
 
     @Operation(summary = "添加项目成员")
+    @OperLog(module = "PROJECT", action = "ADD_MEMBER", bizType = "PROJECT")
     @PostMapping("/{id}/members")
     public R<Void> addMember(@PathVariable Long id, @RequestParam Long userId) {
         projectService.addMember(id, userId);
@@ -78,6 +84,7 @@ public class ProjectController {
     }
 
     @Operation(summary = "移除项目成员")
+    @OperLog(module = "PROJECT", action = "REMOVE_MEMBER", bizType = "PROJECT")
     @DeleteMapping("/{id}/members/{userId}")
     public R<Void> removeMember(@PathVariable Long id, @PathVariable Long userId) {
         projectService.removeMember(id, userId);

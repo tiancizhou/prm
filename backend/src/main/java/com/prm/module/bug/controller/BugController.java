@@ -5,6 +5,7 @@ import com.prm.common.result.R;
 import com.prm.module.bug.application.BugService;
 import com.prm.module.bug.dto.BugDTO;
 import com.prm.module.bug.dto.CreateBugRequest;
+import com.prm.module.log.annotation.OperLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class BugController {
     }
 
     @Operation(summary = "提交Bug")
+    @OperLog(module = "BUG", action = "CREATE", bizType = "BUG")
     @PostMapping
     public R<BugDTO> create(@Valid @RequestBody CreateBugRequest request) {
         return R.ok(bugService.create(request));
@@ -45,6 +47,7 @@ public class BugController {
     }
 
     @Operation(summary = "Bug状态流转")
+    @OperLog(module = "BUG", action = "UPDATE_STATUS", bizType = "BUG")
     @PutMapping("/{id}/status")
     public R<BugDTO> updateStatus(@PathVariable Long id,
                                    @RequestParam String status,
@@ -53,12 +56,14 @@ public class BugController {
     }
 
     @Operation(summary = "指派Bug")
+    @OperLog(module = "BUG", action = "ASSIGN", bizType = "BUG")
     @PutMapping("/{id}/assign")
     public R<BugDTO> assign(@PathVariable Long id, @RequestParam Long assigneeId) {
         return R.ok(bugService.assign(id, assigneeId));
     }
 
     @Operation(summary = "添加Bug评论")
+    @OperLog(module = "BUG", action = "ADD_COMMENT", bizType = "BUG")
     @PostMapping("/{id}/comments")
     public R<Void> addComment(@PathVariable Long id, @RequestParam String content) {
         bugService.addComment(id, content);
@@ -66,6 +71,7 @@ public class BugController {
     }
 
     @Operation(summary = "删除Bug")
+    @OperLog(module = "BUG", action = "DELETE", bizType = "BUG")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         bugService.delete(id);
@@ -79,6 +85,7 @@ public class BugController {
     }
 
     @Operation(summary = "Bug转研发需求")
+    @OperLog(module = "BUG", action = "CONVERT_TO_REQUIREMENT", bizType = "BUG")
     @PostMapping("/{id}/convert-to-requirement")
     public R<Long> convertToRequirement(@PathVariable Long id) {
         return R.ok(bugService.convertToRequirement(id));

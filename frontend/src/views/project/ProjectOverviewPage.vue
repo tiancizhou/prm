@@ -164,7 +164,6 @@
               <span class="card-title">{{ overviewText.trendTitle }}</span>
               <div class="card-header-right">
                 <el-tag type="info" size="small" class="chart-range-tag">{{ overviewText.recent7Days }}</el-tag>
-                <el-button link size="small" :icon="Refresh" @click="refreshTrend">{{ overviewText.refresh }}</el-button>
               </div>
             </div>
           </template>
@@ -552,25 +551,6 @@ function isTaskOverdue(task: any): boolean {
   return new Date(dateStr) < new Date() && task.status !== 'DONE' && task.status !== 'CLOSED'
 }
 
-// ─── Simulated Trend Data ─────────────────────────────────────────────────────
-function buildTrendData(): TrendPoint[] {
-  const openTasks = stats.value?.inProgressTasks ?? 8
-  const openBugs = stats.value?.openBugs ?? 4
-  const result: TrendPoint[] = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const label = `${d.getMonth() + 1}/${d.getDate()}`
-    const factor = i / 6
-    result.push({
-      date: label,
-      tasks: Math.max(1, Math.round(openTasks * (0.6 + factor * 0.6) + (Math.random() * 3 - 1))),
-      bugs: Math.max(0, Math.round(openBugs * (0.5 + factor * 0.7) + (Math.random() * 2 - 1)))
-    })
-  }
-  return result
-}
-
 // ─── Data Loading ─────────────────────────────────────────────────────────────
 async function loadProject(): Promise<void> {
   loading.value = true
@@ -647,7 +627,7 @@ async function loadActivity(): Promise<void> {
 }
 
 function refreshTrend(): void {
-  trendData.value = buildTrendData()
+  trendData.value = []
 }
 
 // ─── Edit Description ─────────────────────────────────────────────────────────
@@ -678,7 +658,6 @@ function goToTasks(): void {
 onMounted(async () => {
   await loadProject()
   await Promise.all([loadStats(), loadTodos(), loadSprint(), loadActivity()])
-  trendData.value = buildTrendData()
 })
 </script>
 

@@ -80,6 +80,7 @@ export const REQUIREMENT_I18N: Record<
       requirementTitle: string
       priority: string
       estimatedHours: string
+      assignee: string
       actualStartAt: string
       actualEndAt: string
       sprint: string
@@ -241,6 +242,7 @@ export const REQUIREMENT_I18N: Record<
       requirementTitle: '需求标题',
       priority: '优先级',
       estimatedHours: '预估工时',
+      assignee: '负责人',
       actualStartAt: '实际开始',
       actualEndAt: '实际结束',
       sprint: '迭代',
@@ -430,6 +432,7 @@ export const REQUIREMENT_I18N: Record<
       requirementTitle: 'Requirement Title',
       priority: 'Priority',
       estimatedHours: 'Estimated Hours',
+      assignee: 'Assignee',
       actualStartAt: 'Actual Start',
       actualEndAt: 'Actual End',
       sprint: 'Sprint',

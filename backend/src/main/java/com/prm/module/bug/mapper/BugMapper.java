@@ -9,6 +9,6 @@ import org.apache.ibatis.annotations.Select;
 public interface BugMapper extends BaseMapper<Bug> {
 
     @Select("SELECT COUNT(*) FROM pm_bug WHERE sprint_id = #{sprintId} " +
-            "AND severity IN ('CRITICAL','BLOCKER') AND status NOT IN ('CLOSED','VERIFIED') AND deleted = 0")
+            "AND severity IN ('CRITICAL','BLOCKER') AND status <> 'CLOSED' AND deleted = 0")
     int countOpenCriticalInSprint(Long sprintId);
 }

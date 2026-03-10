@@ -1,6 +1,7 @@
 package com.prm.module.log.aspect;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.prm.common.result.R;
 import com.prm.module.log.annotation.OperLog;
 import com.prm.module.log.entity.OperationLog;
 import com.prm.module.log.mapper.OperationLogMapper;
@@ -10,12 +11,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.HandlerMapping;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 操作日志 AOP 切面
@@ -37,12 +41,11 @@ public class OperationLogAspect {
             return result;
         } finally {
             long duration = System.currentTimeMillis() - startTime;
-            saveLog(operLog, duration);
+            saveLog(operLog, duration, result);
         }
     }
 
-    @Async
-    protected void saveLog(OperLog operLog, long durationMs) {
+    protected void saveLog(OperLog operLog, long durationMs, Object result) {
         try {
             OperationLog log = new OperationLog();
             log.setModule(operLog.module());
@@ -53,6 +56,7 @@ public class OperationLogAspect {
 
             try {
                 log.setUserId(StpUtil.getLoginIdAsLong());
+                log.setUsername(StpUtil.getLoginIdAsString());
             } catch (Exception ignored) {
             }
 
@@ -61,8 +65,10 @@ public class OperationLogAspect {
                 HttpServletRequest request = attrs.getRequest();
                 log.setIp(getClientIp(request));
                 log.setUserAgent(request.getHeader("User-Agent"));
+                log.setBizId(resolveBizId(request, result));
             }
 
+            log.setAfterData(extractAfterData(result));
             operationLogMapper.insert(log);
         } catch (Exception e) {
             log.error("保存操作日志失败", e);
@@ -75,5 +81,75 @@ public class OperationLogAspect {
             ip = request.getRemoteAddr();
         }
         return ip;
+    }
+
+    private Long resolveBizId(HttpServletRequest request, Object result) {
+        Long fromPath = extractBizIdFromPathVariables(request);
+        if (fromPath != null) {
+            return fromPath;
+        }
+        return extractBizIdFromResult(result);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Long extractBizIdFromPathVariables(HttpServletRequest request) {
+        Object attribute = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+        if (!(attribute instanceof Map<?, ?> rawMap)) {
+            return null;
+        }
+        Map<String, String> pathVariables = (Map<String, String>) rawMap;
+        for (String key : List.of("id", "projectId", "requirementId", "reqId", "taskId", "bugId", "sprintId", "releaseId")) {
+            Long value = parseLong(pathVariables.get(key));
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private Long extractBizIdFromResult(Object result) {
+        Object data = unwrapResponseData(result);
+        if (data instanceof Number number) {
+            return number.longValue();
+        }
+        if (data == null) {
+            return null;
+        }
+        try {
+            Method method = data.getClass().getMethod("getId");
+            Object value = method.invoke(data);
+            if (value instanceof Number number) {
+                return number.longValue();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private Object unwrapResponseData(Object result) {
+        if (result instanceof R<?> response) {
+            return response.getData();
+        }
+        return result;
+    }
+
+    private String extractAfterData(Object result) {
+        Object data = unwrapResponseData(result);
+        if (data == null) {
+            return null;
+        }
+        String text = String.valueOf(data);
+        return text.length() > 2000 ? text.substring(0, 2000) : text;
+    }
+
+    private Long parseLong(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

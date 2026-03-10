@@ -2,6 +2,7 @@ package com.prm.module.release.controller;
 
 import com.prm.common.result.PageResult;
 import com.prm.common.result.R;
+import com.prm.module.log.annotation.OperLog;
 import com.prm.module.release.application.ReleaseService;
 import com.prm.module.release.dto.CreateReleaseRequest;
 import com.prm.module.release.dto.ReleaseDTO;
@@ -29,6 +30,7 @@ public class ReleaseController {
     }
 
     @Operation(summary = "创建版本")
+    @OperLog(module = "RELEASE", action = "CREATE", bizType = "RELEASE")
     @PostMapping
     public R<ReleaseDTO> create(@Valid @RequestBody CreateReleaseRequest request) {
         return R.ok(releaseService.create(request));
@@ -41,6 +43,7 @@ public class ReleaseController {
     }
 
     @Operation(summary = "发布版本")
+    @OperLog(module = "RELEASE", action = "PUBLISH", bizType = "RELEASE")
     @PostMapping("/{id}/publish")
     public R<ReleaseDTO> publish(@PathVariable Long id) {
         return R.ok(releaseService.publish(id));
