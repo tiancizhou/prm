@@ -1,4 +1,4 @@
-INSERT OR IGNORE INTO sys_permission (name, code, type, parent_id, sort)
+INSERT IGNORE INTO sys_permission (name, code, type, parent_id, sort)
 VALUES
     ('新增部门', 'department:create', 'ACTION', 0, 1000),
     ('编辑部门', 'department:update', 'ACTION', 0, 1010),

@@ -1,7 +1,8 @@
+-- 使用派生表包装子查询，避免 MySQL 更新同表时的 Error 1093
 UPDATE sys_permission
 SET parent_id = (
-    SELECT id FROM sys_permission parent
-    WHERE parent.code = 'admin:view' AND parent.deleted = 0
+    SELECT id FROM (SELECT id, code, deleted FROM sys_permission) AS tmp
+    WHERE tmp.code = 'admin:view' AND tmp.deleted = 0
     LIMIT 1
 )
 WHERE code IN (
@@ -13,8 +14,8 @@ WHERE code IN (
 
 UPDATE sys_permission
 SET parent_id = (
-    SELECT id FROM sys_permission parent
-    WHERE parent.code = 'requirement:view' AND parent.deleted = 0
+    SELECT id FROM (SELECT id, code, deleted FROM sys_permission) AS tmp
+    WHERE tmp.code = 'requirement:view' AND tmp.deleted = 0
     LIMIT 1
 )
 WHERE code IN (
@@ -23,8 +24,8 @@ WHERE code IN (
 
 UPDATE sys_permission
 SET parent_id = (
-    SELECT id FROM sys_permission parent
-    WHERE parent.code = 'bug:view' AND parent.deleted = 0
+    SELECT id FROM (SELECT id, code, deleted FROM sys_permission) AS tmp
+    WHERE tmp.code = 'bug:view' AND tmp.deleted = 0
     LIMIT 1
 )
 WHERE code IN (

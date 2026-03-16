@@ -3,21 +3,21 @@
 -- 项目经理：所有模块+动作，便于后台与项目全权管理
 -- 开发：仅工作台/项目集/文档/组织/项目概览/需求/Bug/迭代/项目成员及需求与Bug的创建与编辑
 
-INSERT OR IGNORE INTO sys_role_permission (role_id, permission_id)
+INSERT IGNORE INTO sys_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM sys_role r
 CROSS JOIN sys_permission p
 WHERE r.code = 'SUPER_ADMIN' AND r.deleted = 0
   AND p.deleted = 0 AND p.type IN ('MODULE', 'ACTION');
 
-INSERT OR IGNORE INTO sys_role_permission (role_id, permission_id)
+INSERT IGNORE INTO sys_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM sys_role r
 CROSS JOIN sys_permission p
 WHERE r.code = 'PROJECT_ADMIN' AND r.deleted = 0
   AND p.deleted = 0 AND p.type IN ('MODULE', 'ACTION');
 
-INSERT OR IGNORE INTO sys_role_permission (role_id, permission_id)
+INSERT IGNORE INTO sys_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM sys_role r
 JOIN sys_permission p ON p.deleted = 0 AND p.type IN ('MODULE', 'ACTION')

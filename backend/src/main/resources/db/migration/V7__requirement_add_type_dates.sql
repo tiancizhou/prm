@@ -3,4 +3,4 @@ ALTER TABLE pm_requirement ADD COLUMN type       VARCHAR(32) NOT NULL DEFAULT 'S
 ALTER TABLE pm_requirement ADD COLUMN start_date DATE;
 ALTER TABLE pm_requirement ADD COLUMN due_date   DATE;
 
-CREATE INDEX IF NOT EXISTS idx_requirement_due_date ON pm_requirement(due_date);
+CREATE INDEX idx_requirement_due_date ON pm_requirement(due_date);

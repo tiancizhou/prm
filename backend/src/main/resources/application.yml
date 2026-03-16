@@ -13,11 +13,13 @@ spring:
   profiles:
     active: dev
   datasource:
-    url: jdbc:sqlite:${PRM_DB_PATH:./data/prm.db}
-    driver-class-name: org.sqlite.JDBC
+    url: jdbc:mysql://${PRM_DB_HOST:localhost}:${PRM_DB_PORT:3306}/${PRM_DB_NAME:prm}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${PRM_DB_USER:root}
+    password: ${PRM_DB_PASSWORD:123456}
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
+      maximum-pool-size: 20
+      minimum-idle: 5
       connection-timeout: 30000
   flyway:
     enabled: true

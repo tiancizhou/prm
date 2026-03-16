@@ -1,4 +1,4 @@
-INSERT OR IGNORE INTO sys_permission (name, code, type, parent_id, sort)
+INSERT IGNORE INTO sys_permission (name, code, type, parent_id, sort)
 VALUES
     ('工作台', 'dashboard:view', 'MODULE', 0, 10),
     ('项目集', 'projects:view', 'MODULE', 0, 20),

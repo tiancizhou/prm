@@ -5,5 +5,6 @@ ALTER TABLE sys_user ADD COLUMN department    VARCHAR(128);
 ALTER TABLE sys_user ADD COLUMN team          VARCHAR(128);
 ALTER TABLE sys_user ADD COLUMN external_id   VARCHAR(128);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sys_user_employee_no ON sys_user(employee_no) WHERE employee_no IS NOT NULL AND deleted = 0;
-CREATE INDEX IF NOT EXISTS idx_sys_user_external_id ON sys_user(external_id) WHERE external_id IS NOT NULL;
+-- MySQL 不支持带 WHERE 子句的部分索引，NULL 值在唯一索引中允许重复，语义等价
+CREATE UNIQUE INDEX idx_sys_user_employee_no ON sys_user(employee_no);
+CREATE INDEX idx_sys_user_external_id ON sys_user(external_id);
