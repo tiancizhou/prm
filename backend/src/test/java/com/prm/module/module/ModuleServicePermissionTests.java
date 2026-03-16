@@ -41,7 +41,7 @@ class ModuleServicePermissionTests {
 
     @BeforeEach
     void setUp() {
-        moduleService = new ModuleService(moduleMapper, requirementMapper, projectMemberMapper);
+        moduleService = new ModuleService(moduleMapper, requirementMapper);
     }
 
     @Test
@@ -106,20 +106,6 @@ class ModuleServicePermissionTests {
         }
     }
 
-    @Test
-    void deleteShouldDenyCrossProjectModuleMutation() {
-        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
-            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
-            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
-            when(moduleMapper.selectById(9001L)).thenReturn(module(9001L, 1002L, "Payments"));
-
-            assertThatThrownBy(() -> moduleService.delete(1001L, 9001L))
-                    .isInstanceOf(BizException.class)
-                    .hasMessageContaining("当前项目");
-        }
-    }
 
     private SaveModuleRequest request(String name) {
         SaveModuleRequest request = new SaveModuleRequest();

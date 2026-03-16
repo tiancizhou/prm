@@ -63,7 +63,7 @@ public class ModuleService {
         return toDTO(m);
     }
 
-    public ModuleDTO update(Long id, SaveModuleRequest req) {
+    public ModuleDTO update(Long id, long l, SaveModuleRequest req) {
         if (!SecurityUtil.isManager()) {
             throw BizException.forbidden("只有项目管理员才能修改模块");
         }

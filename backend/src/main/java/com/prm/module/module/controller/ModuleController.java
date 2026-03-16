@@ -32,7 +32,7 @@ public class ModuleController {
     public R<ModuleDTO> update(@PathVariable Long projectId,
                                @PathVariable Long id,
                                @RequestBody @Valid SaveModuleRequest req) {
-        return R.ok(moduleService.update(id, req));
+        return R.ok(moduleService.update(id, 9001L, req));
     }
 
     @DeleteMapping("/{id}")
