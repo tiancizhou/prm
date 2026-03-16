@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+> **Historical Note:** This implementation plan was written against an older role model (`SUPER_ADMIN / PM / DEV / QA / GUEST`). The current active role model has been simplified to `SUPER_ADMIN / PROJECT_ADMIN / DEV`.
+
 **Goal:** Rebuild the current PRM frontend into a role-based, web-first product workbench by redesigning the app shell, role homepage, project center, and the first batch of high-frequency pages without changing backend contracts.
 
 **Architecture:** Keep the existing Vue 3 + Element Plus application skeleton and route tree, but reorganize the UI into a clearer global layer and project layer. Land the redesign in shared tokens and base styles first, then refactor `MainLayout`, then rebuild the role homepage and project-facing pages in descending usage order.

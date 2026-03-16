@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
+import com.prm.module.project.domain.ProjectAccessPolicy;
 import com.prm.module.project.dto.CreateProjectRequest;
 import com.prm.module.project.dto.ProjectDTO;
 import com.prm.module.project.dto.ProjectMemberVO;
@@ -55,7 +56,7 @@ public class ProjectService {
 
     private boolean isProjectManagerOf(Long projectId) {
         ProjectMember membership = findMyMembership(projectId);
-        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
+        return ProjectAccessPolicy.canManage(membership);
     }
 
     private void requireEditPermission(Long projectId) {
@@ -66,10 +67,7 @@ public class ProjectService {
     }
 
     private void requireReadablePermission(Long projectId) {
-        if (isSuperAdmin()) {
-            return;
-        }
-        if (findMyMembership(projectId) != null) {
+        if (ProjectAccessPolicy.canRead(findMyMembership(projectId))) {
             return;
         }
         throw BizException.forbidden("无项目查看权限");
@@ -95,16 +93,15 @@ public class ProjectService {
             myProjectIds = memberships.stream()
                     .map(ProjectMember::getProjectId)
                     .collect(Collectors.toCollection(HashSet::new));
-            managerProjectIds = memberships.stream()
-                    .filter(member -> "PROJECT_ADMIN".equalsIgnoreCase(member.getRole()))
-                    .map(ProjectMember::getProjectId)
-                    .collect(Collectors.toCollection(HashSet::new));
+            managerProjectIds = hasProjectAdminRole()
+                    ? new HashSet<>(myProjectIds)
+                    : new HashSet<>();
 
             if (myProjectIds.isEmpty()) {
                 return new Page<ProjectDTO>(pageNum, pageSize).convert(item -> null);
             }
-        }
 
+        }
         Page<Project> pageReq = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Project> wrapper = new LambdaQueryWrapper<Project>()
                 .eq(Project::getDeleted, 0)
@@ -170,7 +167,7 @@ public class ProjectService {
         ProjectMember ownerMember = new ProjectMember();
         ownerMember.setProjectId(project.getId());
         ownerMember.setUserId(currentUserId);
-        ownerMember.setRole("PROJECT_ADMIN");
+        ownerMember.setRole("MEMBER");
         ownerMember.setCreatedAt(LocalDateTime.now());
         memberMapper.insert(ownerMember);
 
@@ -257,6 +254,7 @@ public class ProjectService {
         for (ProjectMember member : members) {
             ProjectMemberVO vo = new ProjectMemberVO();
             vo.setUserId(member.getUserId());
+            vo.setJoinedAt(member.getCreatedAt());
 
             SysUser user = userMap.get(member.getUserId());
             if (user != null) {
@@ -321,3 +319,4 @@ public class ProjectService {
         return dto;
     }
 }
+

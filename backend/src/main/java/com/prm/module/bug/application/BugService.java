@@ -42,7 +42,7 @@ public class BugService {
     private final ProjectMemberMapper projectMemberMapper;
     private final RequirementMapper requirementMapper;
 
-    public IPage<BugDTO> page(int pageNum, int pageSize, Long projectId, String status, String severity, String keyword, String modules) {
+    public IPage<BugDTO> page(int pageNum, int pageSize, Long projectId, String status, String severity, String keyword, String modules, Long assigneeId) {
         Page<Bug> pageReq = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Bug> wrapper = new LambdaQueryWrapper<Bug>()
                 .eq(Bug::getDeleted, 0)
@@ -102,6 +102,8 @@ public class BugService {
                     .collect(Collectors.toList());
             if (!nameList.isEmpty()) wrapper.in(Bug::getModule, nameList);
         }
+        if (assigneeId != null) wrapper.eq(Bug::getAssigneeId, assigneeId);
+        pageReq.setOptimizeCountSql(false);
         return bugMapper.selectPage(pageReq, wrapper).convert(this::toDTO);
     }
 
@@ -153,6 +155,8 @@ public class BugService {
         if ("RESOLVED".equals(newStatus)) {
             bug.setResolveType(resolveType);
             bug.setResolvedAt(LocalDateTime.now());
+        } else if ("VERIFIED".equals(newStatus)) {
+            bug.setVerifiedAt(LocalDateTime.now());
         }
         bug.setUpdatedBy(SecurityUtil.getCurrentUserId());
         bugMapper.updateById(bug);
@@ -223,7 +227,7 @@ public class BugService {
     public Long convertToRequirement(Long bugId) {
         Bug bug = bugMapper.selectById(bugId);
         if (bug == null || bug.getDeleted() == 1) throw BizException.notFound("Bug");
-        ensureProjectManager(bug.getProjectId());
+        ensureOperable(bug);
 
         Long userId = SecurityUtil.getCurrentUserId();
 

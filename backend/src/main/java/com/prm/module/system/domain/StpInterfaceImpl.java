@@ -19,7 +19,8 @@ public class StpInterfaceImpl implements StpInterface {
 
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
-        return List.of();
+        Long userId = Long.parseLong(loginId.toString());
+        return sysUserMapper.selectPermissionCodesByUserId(userId);
     }
 
     @Override

@@ -47,12 +47,27 @@ class ProjectServicePermissionTests {
     }
 
     @Test
-    void projectMemberShouldNotAddMemberEvenWithSystemProjectAdminRole() {
+    void systemProjectAdminMemberShouldAddMember() {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
             securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
-            when(memberMapper.selectOne(any())).thenReturn(member(1001L, 2001L, "DEV"));
+            when(memberMapper.selectOne(any())).thenReturn(member(1001L, 2001L, "MEMBER"));
+            when(memberMapper.selectCount(any())).thenReturn(0L);
+
+            assertThatCode(() -> projectService.addMember(1001L, 3001L)).doesNotThrowAnyException();
+
+            verify(memberMapper).insert(any(ProjectMember.class));
+        }
+    }
+
+    @Test
+    void legacyProjectMemberRoleShouldNotGrantManagePermission() {
+        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
+            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(false);
+            when(memberMapper.selectOne(any())).thenReturn(member(1001L, 2001L, "PROJECT_ADMIN"));
 
             assertThatThrownBy(() -> projectService.addMember(1001L, 3001L))
                     .isInstanceOf(BizException.class)
@@ -63,21 +78,7 @@ class ProjectServicePermissionTests {
     }
 
     @Test
-    void projectManagerShouldAddMember() {
-        try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
-            securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
-            when(memberMapper.selectOne(any())).thenReturn(member(1001L, 2001L, "PROJECT_ADMIN"));
-            when(memberMapper.selectCount(any())).thenReturn(0L);
-
-            assertThatCode(() -> projectService.addMember(1001L, 3001L)).doesNotThrowAnyException();
-
-            verify(memberMapper).insert(any(ProjectMember.class));
-        }
-    }
-
-    @Test
-    void getByIdShouldMarkCanEditFalseForNormalMember() {
+    void getByIdShouldMarkCanEditTrueForSystemProjectAdminMember() {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
@@ -88,7 +89,7 @@ class ProjectServicePermissionTests {
             project.setDeleted(0);
             project.setOwnerId(5001L);
             when(projectMapper.selectById(1001L)).thenReturn(project);
-            when(memberMapper.selectOne(any())).thenReturn(member(1001L, 2001L, "DEV"));
+            when(memberMapper.selectOne(any())).thenReturn(member(1001L, 2001L, "MEMBER"));
 
             SysUser owner = new SysUser();
             owner.setId(5001L);
@@ -97,7 +98,7 @@ class ProjectServicePermissionTests {
 
             ProjectDTO dto = projectService.getById(1001L);
 
-            assertThat(dto.getCanEdit()).isFalse();
+            assertThat(dto.getCanEdit()).isTrue();
         }
     }
 

@@ -96,6 +96,204 @@ a {
   box-shadow: var(--app-shadow-soft);
 }
 
+/* 带侧栏的工作区布局：左侧固定宽度，右侧自适应 */
+.workspace-layout--sidebar {
+  display: flex;
+  gap: var(--space-lg);
+  min-height: 0;
+  min-width: 0;
+}
+.workspace-side-panel {
+  flex-shrink: 0;
+  width: 280px;
+  min-height: 200px;
+  overflow: auto;
+}
+.workspace-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  overflow: auto;
+}
+.workspace-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+.workspace-panel-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+.workspace-path {
+  font-size: 13px;
+  color: var(--app-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+.workspace-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.workspace-helper-text {
+  font-size: 13px;
+  color: var(--app-text-secondary);
+  margin-bottom: var(--space-md);
+}
+.workspace-section-panel {
+  padding: var(--space-lg);
+  min-width: 0;
+}
+.workspace-inline-form {
+  display: grid;
+  gap: var(--space-md);
+  max-width: 720px;
+}
+.workspace-summary-card {
+  padding: var(--space-md);
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-muted);
+}
+.workspace-summary-label {
+  font-size: 12px;
+  color: var(--app-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+.workspace-summary-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+.workspace-footer {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--app-border-soft);
+}
+.workspace-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-surface);
+  color: var(--app-text-secondary);
+  cursor: pointer;
+}
+.workspace-icon-button:hover {
+  background: var(--app-bg-muted);
+  color: var(--app-text-primary);
+}
+
+.workspace-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.workspace-filters,
+.workspace-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.workspace-filter {
+  min-height: 34px;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-pill);
+  background: var(--app-bg-surface);
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.workspace-filter:hover {
+  color: var(--app-text-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 24%, var(--app-border-soft));
+  background: var(--app-bg-muted);
+}
+
+.workspace-filter.is-active {
+  color: var(--app-color-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 38%, var(--app-border-soft));
+  background: color-mix(in srgb, var(--app-color-primary-soft) 72%, white);
+}
+
+.workspace-action-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.workspace-icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-surface);
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.workspace-icon-action:hover:not(:disabled) {
+  color: var(--app-text-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 24%, var(--app-border-soft));
+  background: var(--app-bg-muted);
+}
+
+.workspace-icon-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 可点击的文案链接样式，避免被渲染成按钮/输入框 */
+.workspace-link-text {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.workspace-link-text:hover {
+  text-decoration: underline;
+}
+
+.workspace-link-text--primary {
+  color: var(--app-color-primary);
+}
+
+.workspace-link-text--primary:hover {
+  color: color-mix(in srgb, var(--app-color-primary) 85%, black);
+}
+
 .filter-bar {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) 180px auto;

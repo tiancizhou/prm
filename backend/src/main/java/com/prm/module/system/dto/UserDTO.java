@@ -12,7 +12,10 @@ public class UserDTO {
     private String nickname;
     private String realName;
     private String employeeNo;
+    private Long departmentId;
     private String department;
+    /** 部门完整路径，如：一级部门 / 二级部门 */
+    private String departmentPath;
     private String team;
     private String externalId;
     private String email;
@@ -21,5 +24,6 @@ public class UserDTO {
     private String status;
     private List<String> roles;
     private List<Long> roleIds;
+    private Long joinedProjectCount;
     private LocalDateTime createdAt;
 }

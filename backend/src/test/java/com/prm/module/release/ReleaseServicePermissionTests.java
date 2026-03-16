@@ -68,7 +68,8 @@ class ReleaseServicePermissionTests {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
 
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> releaseService.create(createRequest(1001L, "1.0.0")))
                     .doesNotThrowAnyException();
@@ -127,7 +128,8 @@ class ReleaseServicePermissionTests {
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
 
             when(releaseMapper.selectById(9001L)).thenReturn(release(9001L, 1001L, "DRAFT"));
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> releaseService.publish(9001L)).doesNotThrowAnyException();
 

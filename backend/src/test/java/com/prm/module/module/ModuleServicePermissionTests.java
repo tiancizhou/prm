@@ -82,7 +82,8 @@ class ModuleServicePermissionTests {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
             securityUtil.when(SecurityUtil::isManager).thenReturn(false);
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> moduleService.create(1001L, request("Core"))).doesNotThrowAnyException();
 
@@ -95,7 +96,8 @@ class ModuleServicePermissionTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
             when(moduleMapper.selectById(9001L)).thenReturn(module(9001L, 1002L, "Payments"));
 
             assertThatThrownBy(() -> moduleService.update(1001L, 9001L, request("Core")))
@@ -109,7 +111,8 @@ class ModuleServicePermissionTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
             when(moduleMapper.selectById(9001L)).thenReturn(module(9001L, 1002L, "Payments"));
 
             assertThatThrownBy(() -> moduleService.delete(1001L, 9001L))

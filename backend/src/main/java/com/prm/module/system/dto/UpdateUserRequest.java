@@ -8,6 +8,7 @@ import java.util.List;
 public class UpdateUserRequest {
     private String realName;
     private String employeeNo;
+    private Long departmentId;
     private String department;
     private String team;
     private String externalId;

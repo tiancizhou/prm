@@ -13,6 +13,7 @@ export interface LoginResponse {
   nickname: string
   avatar: string
   roles: string[]
+  permissions: string[]
 }
 
 export const authApi = {

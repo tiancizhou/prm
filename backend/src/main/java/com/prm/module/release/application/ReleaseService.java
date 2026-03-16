@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
+import com.prm.module.project.domain.ProjectAccessPolicy;
 import com.prm.module.project.entity.ProjectMember;
 import com.prm.module.project.mapper.ProjectMemberMapper;
 import com.prm.module.release.dto.CreateReleaseRequest;
@@ -81,9 +82,9 @@ public class ReleaseService {
     @Transactional
     public ReleaseDTO publish(Long id) {
         Release release = releaseMapper.selectById(id);
-        if (release == null) throw BizException.notFound("鐗堟湰");
+        if (release == null) throw BizException.notFound("版本");
         ensureProjectManager(release.getProjectId());
-        if (!"DRAFT".equals(release.getStatus())) throw BizException.of("鍙湁鑽夌鐘舵€佺殑鐗堟湰鍙互鍙戝竷");
+        if (!"DRAFT".equals(release.getStatus())) throw BizException.of("版本非草稿状态无法发布");
         Long currentUserId = SecurityUtil.getCurrentUserId();
         release.setStatus("RELEASED");
         release.setReleasedBy(currentUserId);
@@ -95,7 +96,7 @@ public class ReleaseService {
 
     public ReleaseDTO getById(Long id) {
         Release release = releaseMapper.selectById(id);
-        if (release == null || release.getDeleted() == 1) throw BizException.notFound("鐗堟湰");
+        if (release == null || release.getDeleted() == 1) throw BizException.notFound("版本");
         ensureReadable(release);
         return toDTO(release);
     }
@@ -107,7 +108,7 @@ public class ReleaseService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(release.getProjectId(), currentUserId);
         if (membership == null) {
-            throw BizException.forbidden("鏃犳潈鏌ョ湅璇ョ増鏈?");
+            throw BizException.forbidden("无项目查看权限");
         }
     }
 
@@ -118,7 +119,7 @@ public class ReleaseService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(projectId, currentUserId);
         if (!isProjectManager(membership)) {
-            throw BizException.forbidden("浠呴」鐩粡鐞嗗彲鎿嶄綔鐗堟湰");
+            throw BizException.forbidden("仅项目经理可查看版本");
         }
     }
 
@@ -129,7 +130,7 @@ public class ReleaseService {
     }
 
     private boolean isProjectManager(ProjectMember membership) {
-        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
+        return ProjectAccessPolicy.canManage(membership);
     }
 
     private ReleaseDTO toDTO(Release r) {
@@ -151,3 +152,4 @@ public class ReleaseService {
         return dto;
     }
 }
+

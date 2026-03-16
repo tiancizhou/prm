@@ -6,6 +6,7 @@ import com.prm.module.system.application.UserService;
 import com.prm.module.system.dto.CreateUserRequest;
 import com.prm.module.system.dto.UpdateUserRequest;
 import com.prm.module.system.dto.UserDTO;
+import com.prm.module.system.dto.UserProjectScopeDTO;
 import com.prm.module.system.entity.SysRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,8 +35,9 @@ public class UserController {
     public R<PageResult<UserDTO>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String keyword) {
-        return R.ok(PageResult.of(userService.page(page, size, keyword)));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long departmentId) {
+        return R.ok(PageResult.of(userService.page(page, size, keyword, departmentId)));
     }
 
     @Operation(summary = "创建用户")
@@ -48,6 +50,12 @@ public class UserController {
     @GetMapping("/{id}")
     public R<UserDTO> getById(@PathVariable Long id) {
         return R.ok(userService.getById(id));
+    }
+
+    @Operation(summary = "用户项目范围")
+    @GetMapping("/{id}/project-scope")
+    public R<UserProjectScopeDTO> getProjectScope(@PathVariable Long id) {
+        return R.ok(userService.getProjectScope(id));
     }
 
     @Operation(summary = "更新用户信息")
@@ -74,6 +82,13 @@ public class UserController {
     @PutMapping("/{id}/status")
     public R<Void> changeStatus(@PathVariable Long id, @RequestParam String status) {
         userService.changeStatus(id, status);
+        return R.ok();
+    }
+
+    @Operation(summary = "删除用户")
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        userService.delete(id);
         return R.ok();
     }
 }

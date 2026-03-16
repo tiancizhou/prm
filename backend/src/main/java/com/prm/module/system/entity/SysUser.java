@@ -18,15 +18,11 @@ public class SysUser {
     private String password;
 
     private String nickname;
-    /** 姓名（与主数据同步） */
     private String realName;
-    /** 工号（与主数据同步） */
     private String employeeNo;
-    /** 部门（与主数据同步） */
+    private Long departmentId;
     private String department;
-    /** 小组（与主数据同步） */
     private String team;
-    /** 主数据唯一标识，同步时用于匹配 */
     private String externalId;
     private String email;
     private String phone;

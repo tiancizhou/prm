@@ -276,6 +276,7 @@ import { requirementApi } from '@/api/requirement'
 import { taskApi } from '@/api/task'
 import { TASK_PAGE_I18N } from '@/constants/task'
 import { resolveThemeLocale } from '@/constants/theme'
+import { ACTION_PERMISSION_MAP } from '@/utils/permission'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
 
@@ -295,8 +296,7 @@ const requirementOptions = ref<any[]>([])
 const memberOptions = ref<{ userId: number; nickname?: string; username?: string }[]>([])
 
 const isManager = computed(() => {
-  const roles: string[] = authStore.user?.roles || []
-  if (roles.includes('SUPER_ADMIN')) return true
+  if (authStore.canAccess(ACTION_PERMISSION_MAP.requirementUpdate)) return true
   return projectStore.currentProject?.id === projectId && projectStore.currentProject?.canEdit === true
 })
 

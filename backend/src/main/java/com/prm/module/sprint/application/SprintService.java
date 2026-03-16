@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
+import com.prm.module.project.domain.ProjectAccessPolicy;
 import com.prm.module.bug.mapper.BugMapper;
 import com.prm.module.project.entity.ProjectMember;
 import com.prm.module.project.mapper.ProjectMemberMapper;
@@ -83,7 +84,7 @@ public class SprintService {
 
     public SprintDTO getById(Long id) {
         Sprint sprint = sprintMapper.selectById(id);
-        if (sprint == null || sprint.getDeleted() == 1) throw BizException.notFound("杩唬");
+        if (sprint == null || sprint.getDeleted() == 1) throw BizException.notFound("迭代");
         ensureReadable(sprint);
         return toDTO(sprint);
     }
@@ -91,7 +92,7 @@ public class SprintService {
     @Transactional
     public SprintDTO start(Long id) {
         Sprint sprint = sprintMapper.selectById(id);
-        if (sprint == null) throw BizException.notFound("杩唬");
+        if (sprint == null) throw BizException.notFound("迭代");
         ensureProjectManager(sprint.getProjectId());
         stateMachine.transit(sprint.getStatus(), "ACTIVE");
         sprint.setStatus("ACTIVE");
@@ -103,13 +104,13 @@ public class SprintService {
     @Transactional
     public SprintDTO close(Long id) {
         Sprint sprint = sprintMapper.selectById(id);
-        if (sprint == null) throw BizException.notFound("杩唬");
+        if (sprint == null) throw BizException.notFound("迭代");
         ensureProjectManager(sprint.getProjectId());
         stateMachine.transit(sprint.getStatus(), "CLOSED");
 
         int openCritical = bugMapper.countOpenCriticalInSprint(id);
         if (openCritical > 0) {
-            throw BizException.of("瀛樺湪 " + openCritical + " 涓湭鍏抽棴鐨勪弗閲?闃诲缂洪櫡锛屾棤娉曞叧闂凯浠?");
+            throw BizException.of("当前有 " + openCritical + " 个严重Bug未解决，请先解决后再关闭迭代");
         }
 
         sprint.setStatus("CLOSED");
@@ -126,7 +127,7 @@ public class SprintService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(sprint.getProjectId(), currentUserId);
         if (membership == null) {
-            throw BizException.forbidden("鏃犳潈鏌ョ湅璇ヨ凯浠?");
+            throw BizException.forbidden("无项目关闭权限");
         }
     }
 
@@ -137,7 +138,7 @@ public class SprintService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(projectId, currentUserId);
         if (!isProjectManager(membership)) {
-            throw BizException.forbidden("浠呴」鐩粡鐞嗗彲鎿嶄綔杩唬");
+            throw BizException.forbidden("仅项目经理可关闭迭代");
         }
     }
 
@@ -148,7 +149,7 @@ public class SprintService {
     }
 
     private boolean isProjectManager(ProjectMember membership) {
-        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
+        return ProjectAccessPolicy.canManage(membership);
     }
 
     private SprintDTO toDTO(Sprint s) {
@@ -166,3 +167,4 @@ public class SprintService {
         return dto;
     }
 }
+

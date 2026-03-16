@@ -36,6 +36,7 @@ export const PROJECT_OVERVIEW_I18N: Record<
     legendOpenBugs: string
     myTodos: string
     viewAllTasks: string
+    viewAllRequirements: string
     emptyTodos: string
     prioritySuffix: string
     duePrefix: string
@@ -59,6 +60,7 @@ export const PROJECT_OVERVIEW_I18N: Record<
     teamMemberFallback: string
     updatedFallback: string
     taskPrefix: string
+    requirementPrefix: string
     descUpdated: string
     updateFailed: string
   }
@@ -78,26 +80,27 @@ export const PROJECT_OVERVIEW_I18N: Record<
     overdueTag: '逾期',
     kpiTitles: {
       progress: '项目整体进度',
-      openTasks: '待处理任务',
+      openTasks: '进行中需求',
       openBugs: '未关闭 Bug',
       sprintDaysLeft: '当前迭代剩余'
     },
     requirementsCompleted: '需求已完成',
     overdueItems: '项逾期',
-    noOverdueTasks: '✓ 无逾期任务',
+    noOverdueTasks: '✓ 无逾期需求',
     criticalCountSuffix: '个严重/阻塞',
     noCriticalBugs: '✓ 无严重 Bug',
     dayUnit: '天',
     noActiveSprint: '暂无活跃迭代',
-    trendTitle: '任务 & Bug 趋势',
+    trendTitle: '需求 & Bug 趋势',
     recent7Days: '近 7 天',
     refresh: '刷新',
     emptyTrend: '暂无趋势数据',
-    legendOpenTasks: '未完成任务',
+    legendOpenTasks: '未完成需求',
     legendOpenBugs: '未关闭 Bug',
     myTodos: '我的待办',
     viewAllTasks: '查看全部任务',
-    emptyTodos: '暂无待办任务，尽情摸鱼 🎉',
+    viewAllRequirements: '查看全部需求',
+    emptyTodos: '暂无待办需求，尽情摸鱼 🎉',
     prioritySuffix: '优先级',
     duePrefix: '截止',
     recentActivity: '最近动态',
@@ -115,16 +118,19 @@ export const PROJECT_OVERVIEW_I18N: Record<
     statusLabels: { ACTIVE: '进行中', ARCHIVED: '已归档', CLOSED: '已关闭' },
     visibilityLabels: { public: '公开', private: '私有' },
     priorityLabels: { HIGH: '高', MEDIUM: '中', LOW: '低' },
-    taskStatusLabels: { TODO: '待处理', IN_PROGRESS: '进行中', DONE: '已完成', CLOSED: '已关闭' },
+    taskStatusLabels: { TODO: '待处理', IN_PROGRESS: '进行中', DONE: '已完成', CLOSED: '已关闭', ACTIVE: '进行中', PENDING_REVIEW: '待评审' },
     activityActionMap: {
-      DONE: '完成了任务',
-      CLOSED: '关闭了任务',
+      DONE: '完成了需求',
+      CLOSED: '关闭了需求',
       IN_PROGRESS: '开始处理',
-      TODO: '创建了任务'
+      ACTIVE: '进行中',
+      PENDING_REVIEW: '待评审',
+      TODO: '创建了需求'
     },
     teamMemberFallback: '团队成员',
     updatedFallback: '更新了',
     taskPrefix: '任务',
+    requirementPrefix: '需求',
     descUpdated: '项目描述已更新',
     updateFailed: '更新失败，请重试'
   },
@@ -143,26 +149,27 @@ export const PROJECT_OVERVIEW_I18N: Record<
     overdueTag: 'Overdue',
     kpiTitles: {
       progress: 'Overall Progress',
-      openTasks: 'Open Tasks',
+      openTasks: 'In Progress',
       openBugs: 'Open Bugs',
       sprintDaysLeft: 'Sprint Days Left'
     },
     requirementsCompleted: 'requirements completed',
     overdueItems: 'overdue',
-    noOverdueTasks: '✓ No overdue tasks',
+    noOverdueTasks: '✓ No overdue requirements',
     criticalCountSuffix: 'critical/blocker',
     noCriticalBugs: '✓ No critical bugs',
     dayUnit: 'd',
     noActiveSprint: 'No active sprint',
-    trendTitle: 'Task & Bug Trend',
+    trendTitle: 'Requirement & Bug Trend',
     recent7Days: 'Last 7 Days',
     refresh: 'Refresh',
     emptyTrend: 'No trend data',
-    legendOpenTasks: 'Open Tasks',
+    legendOpenTasks: 'Open Requirements',
     legendOpenBugs: 'Open Bugs',
     myTodos: 'My Todos',
     viewAllTasks: 'View All Tasks',
-    emptyTodos: 'No pending tasks. Enjoy your free time 🎉',
+    viewAllRequirements: 'View All Requirements',
+    emptyTodos: 'No pending requirements. Enjoy your free time 🎉',
     prioritySuffix: ' priority',
     duePrefix: 'Due',
     recentActivity: 'Recent Activity',
@@ -180,16 +187,19 @@ export const PROJECT_OVERVIEW_I18N: Record<
     statusLabels: { ACTIVE: 'Active', ARCHIVED: 'Archived', CLOSED: 'Closed' },
     visibilityLabels: { public: 'Public', private: 'Private' },
     priorityLabels: { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' },
-    taskStatusLabels: { TODO: 'Todo', IN_PROGRESS: 'In Progress', DONE: 'Done', CLOSED: 'Closed' },
+    taskStatusLabels: { TODO: 'Todo', IN_PROGRESS: 'In Progress', DONE: 'Done', CLOSED: 'Closed', ACTIVE: 'Active', PENDING_REVIEW: 'Pending Review' },
     activityActionMap: {
-      DONE: 'completed task',
-      CLOSED: 'closed task',
+      DONE: 'completed requirement',
+      CLOSED: 'closed requirement',
       IN_PROGRESS: 'started working on',
-      TODO: 'created task'
+      ACTIVE: 'in progress',
+      PENDING_REVIEW: 'pending review',
+      TODO: 'created requirement'
     },
     teamMemberFallback: 'Team member',
     updatedFallback: 'updated',
     taskPrefix: 'Task',
+    requirementPrefix: 'Requirement',
     descUpdated: 'Project description updated',
     updateFailed: 'Update failed, please try again'
   }

@@ -133,7 +133,7 @@
 - 看板趋势类接口（如 `bug-trend / burndown / team-efficiency`）属于目标态设计，第一阶段未启用
 
 ### 3.2 权限模型（基础 RBAC）
-- 系统角色：`SUPER_ADMIN`、`PROJECT_ADMIN`、`PM`、`DEV`、`QA`、`GUEST`
+- 系统角色：`SUPER_ADMIN`、`PROJECT_ADMIN`、`DEV`
 - 接口权限：`@PreAuthorize` + JWT
 - 数据范围：首版仅校验“是否项目成员”，不做字段级权限
 

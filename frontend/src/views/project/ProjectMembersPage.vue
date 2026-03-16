@@ -10,15 +10,36 @@
       </div>
     </header>
 
+    <div class="scope-rule-banner">
+      {{ membersText.helperText }}
+    </div>
+
     <el-card class="surface-card members-surface" shadow="never">
       <el-table :data="members" v-loading="loading" class="members-table">
-        <el-table-column :label="membersText.labels.employeeNo" prop="employeeNo" width="120" />
-        <el-table-column :label="membersText.labels.realName" prop="nickname" width="140" />
-        <el-table-column :label="membersText.labels.username" prop="username" width="140" />
+        <el-table-column :label="membersText.labels.member" min-width="260">
+          <template #default="{ row }">
+            <div class="member-identity">
+              <RouterLink
+                :to="{ path: `/organization/team/${row.userId}`, query: { from: 'project-members', projectId: String(projectId) } }"
+                class="workspace-link-text workspace-link-text--primary"
+              >
+                {{ row.nickname || row.username || row.employeeNo || membersText.labels.noneSymbol }}
+              </RouterLink>
+              <div class="member-identity__secondary">
+                {{ [row.username, row.employeeNo].filter(Boolean).join(' / ') || membersText.labels.noneSymbol }}
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column :label="membersText.labels.systemRole" width="140">
           <template #default="{ row }">
             <el-tag v-if="row.roleName" :type="roleTagType(row.role)" size="small">{{ row.roleName }}</el-tag>
             <span v-else class="text-muted">{{ membersText.labels.noneSymbol }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="membersText.labels.joinedAt" min-width="170">
+          <template #default="{ row }">
+            <span>{{ formatJoinedAt(row.joinedAt) }}</span>
           </template>
         </el-table-column>
         <el-table-column v-if="canManageMembers" :label="membersText.labels.actions" width="120" fixed="right">
@@ -67,6 +88,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/api/http'
 import { projectApi } from '@/api/project'
 import { PROJECT_MEMBERS_I18N } from '@/constants/projectMembers'
+import { getRoleGroupTagType } from '@/constants/roleGroupCode'
 import { resolveThemeLocale } from '@/constants/theme'
 import { useProjectStore } from '@/stores/project'
 
@@ -78,6 +100,7 @@ const membersText = PROJECT_MEMBERS_I18N[currentLocale]
 
 const loading = ref(false)
 const members = ref<any[]>([])
+const allRoles = ref<Array<{ code: string; tagType?: string }>>([])
 
 const showAdd = ref(false)
 const adding = ref(false)
@@ -91,21 +114,31 @@ const canManageMembers = computed(() => {
   return currentProject?.id === projectId && currentProject?.canEdit === true
 })
 
-const roleTagTypeMap: Record<string, 'danger' | 'warning' | 'primary' | 'success' | 'info'> = {
-  SUPER_ADMIN: 'danger',
-  PROJECT_ADMIN: 'warning',
-  PM: 'warning',
-  DEV: 'primary',
-  QA: 'success',
-  GUEST: 'info'
-}
+const roleTagTypeMapFromApi = computed<Record<string, string>>(() =>
+  Object.fromEntries(
+    allRoles.value
+      .filter((r) => r.tagType)
+      .map((r) => [r.code, r.tagType!])
+  )
+)
 
 function withName(template: string, name: string) {
   return template.replace('{name}', name)
 }
 
 function roleTagType(code: string) {
-  return roleTagTypeMap[code] || 'info'
+  return roleTagTypeMapFromApi.value[code] || getRoleGroupTagType(code)
+}
+
+function formatJoinedAt(value?: string | null) {
+  if (!value) {
+    return membersText.labels.noneSymbol
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return membersText.labels.noneSymbol
+  }
+  return date.toLocaleString(currentLocale)
 }
 
 async function loadMembers() {
@@ -189,6 +222,8 @@ async function removeMember(member: any) {
 
 onMounted(() => {
   void (async () => {
+    const rolesRes: any = await http.get('/system/users/roles')
+    allRoles.value = rolesRes?.data ?? []
     await ensureProjectPermission()
     await loadMembers()
   })()
@@ -227,9 +262,29 @@ onMounted(() => {
   box-shadow: var(--app-shadow-soft);
 }
 
+.scope-rule-banner {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--app-color-primary) 18%, var(--app-border-soft));
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-color-primary-soft) 58%, white);
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .members-table {
   --el-table-border-color: var(--app-border-soft);
   --el-table-header-bg-color: var(--app-bg-muted);
+}
+
+.member-identity {
+  display: grid;
+  gap: 4px;
+}
+
+.member-identity__secondary {
+  font-size: 12px;
+  color: var(--app-text-muted);
 }
 
 .members-table :deep(.el-table__row:hover) {

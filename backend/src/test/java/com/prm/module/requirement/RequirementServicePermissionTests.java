@@ -11,8 +11,10 @@ import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
 import com.prm.module.requirement.dto.UpdateRequirementRequest;
 import com.prm.module.requirement.entity.Requirement;
+import com.prm.module.requirement.mapper.RequirementLogMapper;
 import com.prm.module.requirement.mapper.RequirementMapper;
 import com.prm.module.requirement.mapper.RequirementReviewMapper;
+import com.prm.module.module.mapper.ModuleMapper;
 import com.prm.module.system.mapper.SysUserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,11 +44,15 @@ class RequirementServicePermissionTests {
     @Mock
     private RequirementReviewMapper reviewMapper;
     @Mock
+    private RequirementLogMapper logMapper;
+    @Mock
     private RequirementStateMachine stateMachine;
     @Mock
     private SysUserMapper userMapper;
     @Mock
     private ProjectMemberMapper projectMemberMapper;
+    @Mock
+    private ModuleMapper moduleMapper;
 
     private RequirementService requirementService;
 
@@ -55,9 +61,11 @@ class RequirementServicePermissionTests {
         requirementService = new RequirementService(
                 requirementMapper,
                 reviewMapper,
+                logMapper,
                 stateMachine,
                 userMapper,
-                projectMemberMapper
+                projectMemberMapper,
+                moduleMapper
         );
     }
 
@@ -100,9 +108,10 @@ class RequirementServicePermissionTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
 
             when(requirementMapper.selectById(9001L)).thenReturn(requirement(9001L, 1001L, 2001L));
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> requirementService.update(9001L, updateRequest("R-Updated")))
                     .doesNotThrowAnyException();

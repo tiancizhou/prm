@@ -15,6 +15,8 @@ public class SysRole {
     private String name;
     private String code;
     private String description;
+    @TableField("tag_type")
+    private String tagType;
 
     @TableLogic
     private Integer deleted;

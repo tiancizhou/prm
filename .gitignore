@@ -21,6 +21,7 @@ backend/.m2repo/
 *.iml
 .vscode/
 .DS_Store
+.worktrees/
 
 # Spring
 backend/src/main/resources/application-local.yml

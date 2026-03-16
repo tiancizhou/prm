@@ -27,39 +27,17 @@
           <template #title>{{ layoutText.routeLabels.Projects }}</template>
         </el-menu-item>
 
-        <template v-if="currentProject">
-          <div v-if="!collapsed" class="menu-section">{{ layoutText.currentProject }}</div>
-          <el-menu-item :index="`/projects/${currentProject.id}/overview`">
-            <el-icon><House /></el-icon>
-            <template #title>{{ layoutText.routeLabels.ProjectOverview }}</template>
-          </el-menu-item>
-          <el-menu-item :index="`/projects/${currentProject.id}/requirements`">
-            <el-icon><Document /></el-icon>
-            <template #title>{{ layoutText.routeLabels.Requirements }}</template>
-          </el-menu-item>
-          <el-menu-item :index="`/projects/${currentProject.id}/modules`">
-            <el-icon><Grid /></el-icon>
-            <template #title>{{ layoutText.routeLabels.Modules }}</template>
-          </el-menu-item>
-          <el-menu-item :index="`/projects/${currentProject.id}/bugs`">
-            <el-icon><Warning /></el-icon>
-            <template #title>{{ layoutText.routeLabels.Bugs }}</template>
-          </el-menu-item>
-          <el-menu-item :index="`/projects/${currentProject.id}/sprints`">
-            <el-icon><Calendar /></el-icon>
-            <template #title>{{ layoutText.routeLabels.Sprints }}</template>
-          </el-menu-item>
-          <el-menu-item v-if="canManageCurrentProjectMembers" :index="`/projects/${currentProject.id}/members`">
-            <el-icon><User /></el-icon>
-            <template #title>{{ layoutText.routeLabels.ProjectMembers }}</template>
+        <template v-if="canAccessOrganization">
+          <el-menu-item index="/organization/team">
+            <el-icon><OfficeBuilding /></el-icon>
+            <template #title>{{ layoutText.routeLabels.Organization }}</template>
           </el-menu-item>
         </template>
 
-        <template v-if="isSuperAdmin">
-          <div v-if="!collapsed" class="menu-section">{{ layoutText.systemManagement }}</div>
-          <el-menu-item index="/system/users">
+        <template v-if="canAccessAdmin">
+          <el-menu-item index="/admin/departments">
             <el-icon><Setting /></el-icon>
-            <template #title>{{ layoutText.routeLabels.Users }}</template>
+            <template #title>{{ layoutText.routeLabels.Admin }}</template>
           </el-menu-item>
         </template>
       </el-menu>
@@ -147,8 +125,10 @@ import {
   resolveThemeLocale,
   type ThemeMode
 } from '@/constants/theme'
+import { OfficeBuilding } from '@element-plus/icons-vue'
 import { MAIN_LAYOUT_I18N } from '@/constants/layout'
 import { BRAND_FULL_NAME, BRAND_SHORT_NAME, BRAND_SUBTITLE } from '@/constants/brand'
+import { GLOBAL_NAV_PERMISSION_MAP } from '@/utils/permission'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,10 +140,22 @@ const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)')
 const compactLayoutMedia = window.matchMedia('(max-width: 1365px)')
 
 const collapsed = ref(compactLayoutMedia.matches)
-const activeMenu = computed(() => route.path)
+const activeMenu = computed(() => {
+  if (route.path.startsWith('/dashboard')) {
+    return '/dashboard'
+  }
+  if (route.path.startsWith('/admin/')) {
+    return '/admin/departments'
+  }
+  if (route.path.startsWith('/organization/')) {
+    return '/organization/team'
+  }
+  return route.path
+})
 const currentProject = computed(() => projectStore.currentProject)
-const canManageCurrentProjectMembers = computed(() => currentProject.value?.canEdit === true)
 const isSuperAdmin = computed(() => authStore.user?.roles?.includes('SUPER_ADMIN'))
+const canAccessAdmin = computed(() => authStore.canAccess(GLOBAL_NAV_PERMISSION_MAP.admin))
+const canAccessOrganization = computed(() => authStore.canAccess(GLOBAL_NAV_PERMISSION_MAP.organization))
 const themeMode = ref<ThemeMode>(resolveThemeMode())
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const themeText = THEME_I18N[currentLocale]
@@ -297,14 +289,6 @@ async function handleCommand(command: string) {
 .brand-text small {
   font-size: 12px;
   color: var(--app-text-muted);
-}
-
-.menu-section {
-  margin: var(--space-lg) var(--space-lg) var(--space-xs);
-  font-size: 12px;
-  color: var(--app-text-muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .sidebar-menu {

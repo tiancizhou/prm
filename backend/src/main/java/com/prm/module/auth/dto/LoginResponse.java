@@ -16,4 +16,5 @@ public class LoginResponse {
     private String nickname;
     private String avatar;
     private List<String> roles;
+    private List<String> permissions;
 }

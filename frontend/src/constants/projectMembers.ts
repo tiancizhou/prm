@@ -5,6 +5,7 @@ export const PROJECT_MEMBERS_I18N: Record<
   {
     pageTitle: string
     pageSubtitle: string
+    helperText: string
     buttons: {
       addMember: string
       remove: string
@@ -12,10 +13,9 @@ export const PROJECT_MEMBERS_I18N: Record<
       add: string
     }
     labels: {
-      employeeNo: string
-      realName: string
-      username: string
+      member: string
       systemRole: string
+      joinedAt: string
       actions: string
       selectMember: string
       noneSymbol: string
@@ -43,7 +43,8 @@ export const PROJECT_MEMBERS_I18N: Record<
 > = {
   'zh-CN': {
     pageTitle: '项目成员',
-    pageSubtitle: '维护项目参与成员，确保角色协作关系清晰透明。',
+    pageSubtitle: '维护当前项目的参与成员与数据范围。',
+    helperText: '系统角色决定操作权限；成员加入当前项目后，才能查看当前项目数据。',
     buttons: {
       addMember: '添加成员',
       remove: '移除',
@@ -51,10 +52,9 @@ export const PROJECT_MEMBERS_I18N: Record<
       add: '添加'
     },
     labels: {
-      employeeNo: '工号',
-      realName: '姓名',
-      username: '用户名',
+      member: '成员',
       systemRole: '系统角色',
+      joinedAt: '加入时间',
       actions: '操作',
       selectMember: '选择成员',
       noneSymbol: '—'
@@ -63,25 +63,26 @@ export const PROJECT_MEMBERS_I18N: Record<
       searchAddableMembers: '搜索可添加成员'
     },
     placeholders: {
-      searchMembers: '输入工号或姓名搜索'
+      searchMembers: '输入姓名、用户名或工号搜索'
     },
     dialogs: {
-      addMember: '添加成员',
+      addMember: '添加到当前项目',
       confirmTitle: '确认'
     },
     messages: {
       selectMemberFirst: '请选择成员',
       added: '添加成功',
       removed: '已移除',
-      noPermission: '无权限编辑成员'
+      noPermission: '当前系统角色无权维护项目成员'
     },
     confirms: {
-      removeMember: '确定移除成员「{name}」？'
+      removeMember: '确定将成员「{name}」移出当前项目？'
     }
   },
   'en-US': {
     pageTitle: 'Project Members',
-    pageSubtitle: 'Maintain project participants and keep role collaboration transparent.',
+    pageSubtitle: 'Maintain current project participants and their data scope.',
+    helperText: 'System roles define what a user can do. Users can view this project only after they join it.',
     buttons: {
       addMember: 'Add Member',
       remove: 'Remove',
@@ -89,10 +90,9 @@ export const PROJECT_MEMBERS_I18N: Record<
       add: 'Add'
     },
     labels: {
-      employeeNo: 'Employee No',
-      realName: 'Name',
-      username: 'Username',
+      member: 'Member',
       systemRole: 'System Role',
+      joinedAt: 'Joined Time',
       actions: 'Actions',
       selectMember: 'Select Member',
       noneSymbol: '—'
@@ -101,20 +101,20 @@ export const PROJECT_MEMBERS_I18N: Record<
       searchAddableMembers: 'Search addable members'
     },
     placeholders: {
-      searchMembers: 'Search by employee no or name'
+      searchMembers: 'Search by name, username, or employee number'
     },
     dialogs: {
-      addMember: 'Add Member',
+      addMember: 'Add to Current Project',
       confirmTitle: 'Confirmation'
     },
     messages: {
       selectMemberFirst: 'Please select a member',
       added: 'Added successfully',
       removed: 'Removed',
-      noPermission: 'You do not have permission to edit members'
+      noPermission: 'Your current system role cannot maintain project members'
     },
     confirms: {
-      removeMember: 'Remove member "{name}"?'
+      removeMember: 'Remove member "{name}" from the current project?'
     }
   }
 }

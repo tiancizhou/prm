@@ -83,7 +83,8 @@ class TaskServicePermissionTests {
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
             securityUtil.when(SecurityUtil::isManager).thenReturn(false);
 
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> taskService.create(createRequest(1001L, "Task-1")))
                     .doesNotThrowAnyException();
@@ -117,7 +118,8 @@ class TaskServicePermissionTests {
             securityUtil.when(SecurityUtil::isManager).thenReturn(false);
 
             when(taskMapper.selectById(9001L)).thenReturn(task(9001L, 1001L, 2001L, "TODO"));
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> taskService.assign(9001L, 3002L)).doesNotThrowAnyException();
 

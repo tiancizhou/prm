@@ -74,7 +74,8 @@ class SprintServicePermissionTests {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
 
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> sprintService.create(createRequest(1001L, "Sprint-1")))
                     .doesNotThrowAnyException();
@@ -133,7 +134,8 @@ class SprintServicePermissionTests {
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
 
             when(sprintMapper.selectById(9001L)).thenReturn(sprint(9001L, 1001L, "ACTIVE"));
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> sprintService.close(9001L)).doesNotThrowAnyException();
 

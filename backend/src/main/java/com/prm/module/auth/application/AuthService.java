@@ -38,6 +38,7 @@ public class AuthService {
         String token = StpUtil.getTokenValue();
 
         List<String> roles = sysUserMapper.selectRoleCodesByUserId(user.getId());
+        List<String> permissions = sysUserMapper.selectPermissionCodesByUserId(user.getId());
 
         return LoginResponse.builder()
                 .accessToken(token)
@@ -47,6 +48,7 @@ public class AuthService {
                 .nickname(user.getNickname())
                 .avatar(user.getAvatar())
                 .roles(roles)
+                .permissions(permissions)
                 .build();
     }
 
@@ -61,12 +63,14 @@ public class AuthService {
             throw BizException.notFound("用户");
         }
         List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
+        List<String> permissions = sysUserMapper.selectPermissionCodesByUserId(userId);
         return LoginResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
                 .nickname(user.getNickname())
                 .avatar(user.getAvatar())
                 .roles(roles)
+                .permissions(permissions)
                 .build();
     }
 }

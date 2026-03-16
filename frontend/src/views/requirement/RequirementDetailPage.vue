@@ -208,6 +208,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, EditPen, ArrowDown, Document, ChatLineRound } from '@element-plus/icons-vue'
 import { requirementApi } from '@/api/requirement'
+import { ACTION_PERMISSION_MAP } from '@/utils/permission'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
 
@@ -234,8 +235,7 @@ const commentSubmitting = ref(false)
 // ---- 权限 ----
 const currentUserId = computed(() => authStore.user?.userId)
 const canManage = computed(() => {
-  const roles = authStore.user?.roles ?? []
-  if (roles.includes('SUPER_ADMIN')) return true
+  if (authStore.canAccess(ACTION_PERMISSION_MAP.requirementUpdate)) return true
   return projectStore.currentProject?.id === projectId && projectStore.currentProject?.canEdit === true
 })
 const canEdit = computed(() => {

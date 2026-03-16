@@ -110,6 +110,7 @@ public class RequirementService {
         if (StringUtils.hasText(status)) wrapper.eq(Requirement::getStatus, status);
         if (StringUtils.hasText(keyword)) wrapper.like(Requirement::getTitle, keyword);
         if (assigneeId != null) wrapper.eq(Requirement::getAssigneeId, assigneeId);
+        pageReq.setOptimizeCountSql(false);
         if (Boolean.TRUE.equals(unscheduled)) {
             wrapper.and(w -> w
                     .isNull(Requirement::getSprintId)

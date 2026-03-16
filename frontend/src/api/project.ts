@@ -22,6 +22,16 @@ export interface PageResult<T> {
   records: T[]
 }
 
+export interface ProjectMemberRow {
+  userId: number
+  nickname: string
+  username: string
+  employeeNo: string
+  role: string
+  roleName: string
+  joinedAt?: string | null
+}
+
 export const projectApi = {
   list: (params?: any) => http.get<any, { data: PageResult<Project> }>('/projects', { params }),
   get: (id: number) => http.get<any, { data: Project }>(`/projects/${id}`),
@@ -29,7 +39,7 @@ export const projectApi = {
   update: (id: number, data: any) => http.put<any, { data: Project }>(`/projects/${id}`, data),
   archive: (id: number) => http.post(`/projects/${id}/archive`),
   close: (id: number) => http.post(`/projects/${id}/close`),
-  getMembers: (id: number) => http.get(`/projects/${id}/members`),
+  getMembers: (id: number) => http.get<any, { data: ProjectMemberRow[] }>(`/projects/${id}/members`),
   addMember: (id: number, userId: number) =>
     http.post(`/projects/${id}/members`, null, { params: { userId } }),
   removeMember: (id: number, userId: number) => http.delete(`/projects/${id}/members/${userId}`)

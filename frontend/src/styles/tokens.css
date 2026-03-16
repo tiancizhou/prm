@@ -18,7 +18,8 @@
   --app-color-accent-soft: #f5f3ff;
   --app-text-on-primary: #ffffff;
 
-  --app-bg-page: #f3f5f9;
+  --app-bg-page: #f5f7fa;
+  --app-page-bg: #f5f7fa;
   --app-bg-surface: #ffffff;
   --app-bg-muted: #f8f9fc;
   --app-bg-sidebar: #f7f9fd;
@@ -36,6 +37,16 @@
 
   --app-border-soft: #e8edf4;
   --app-border-strong: #d7dfeb;
+  --app-paper-border: #e6eaf0;
+
+  --app-subtle-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --app-rail-bg: #111827;
+  --app-rail-border: #1f2937;
+  --app-rail-text: #94a3b8;
+  --app-rail-text-active: #f8fafc;
+  --app-rail-hover-bg: rgba(148, 163, 184, 0.12);
+  --app-rail-active-bg: rgba(37, 99, 235, 0.28);
+  --app-project-sidebar-bg: #f8fafc;
 
   --app-radius-sm: 10px;
   --app-radius-md: 14px;
@@ -114,6 +125,7 @@
   --app-text-on-primary: #ffffff;
 
   --app-bg-page: #0b1322;
+  --app-page-bg: #0b1322;
   --app-bg-surface: #121c2f;
   --app-bg-muted: #17253e;
   --app-bg-sidebar: #0f1a2d;
@@ -131,10 +143,12 @@
 
   --app-border-soft: #2b3c5a;
   --app-border-strong: #3b4f74;
+  --app-paper-border: #314562;
 
   --app-shadow-soft: 0 10px 26px rgba(2, 7, 18, 0.45);
   --app-shadow-panel: 0 18px 40px rgba(2, 7, 18, 0.6);
   --app-shadow-hover: 0 10px 26px rgba(2, 7, 18, 0.55);
+  --app-subtle-shadow: 0 1px 2px rgba(2, 7, 18, 0.24), 0 12px 28px rgba(2, 7, 18, 0.42);
   --app-table-header-bg: #1b2a44;
   --app-brand-mark-bg: linear-gradient(135deg, #3f6ed3 0%, #2f57b5 100%);
   --app-brand-mark-shadow: 0 10px 20px rgba(2, 10, 25, 0.5);
@@ -142,6 +156,13 @@
   --app-todo-overdue-hover-bg: #4a2330;
   --app-todo-overdue-border: #704257;
   --app-dot-muted: #5f7399;
+  --app-rail-bg: #08101d;
+  --app-rail-border: #1c2a3f;
+  --app-rail-text: #7f95b9;
+  --app-rail-text-active: #edf3ff;
+  --app-rail-hover-bg: rgba(148, 163, 184, 0.14);
+  --app-rail-active-bg: rgba(106, 155, 255, 0.22);
+  --app-project-sidebar-bg: #0f1a2d;
 
   --app-login-shell-bg: linear-gradient(132deg, #0d172c 0%, #111f36 52%, #101a2e 100%);
   --app-login-hero-bg:

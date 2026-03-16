@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
+import com.prm.module.project.domain.ProjectAccessPolicy;
 import com.prm.module.bug.entity.Bug;
 import com.prm.module.bug.mapper.BugMapper;
 import com.prm.module.dashboard.dto.OverviewDTO;
@@ -55,8 +56,8 @@ public class DashboardService {
         ProjectMember membership = projectMemberMapper.selectOne(new LambdaQueryWrapper<ProjectMember>()
                 .eq(ProjectMember::getProjectId, projectId)
                 .eq(ProjectMember::getUserId, currentUserId));
-        if (membership == null || !"PROJECT_ADMIN".equalsIgnoreCase(membership.getRole())) {
-            throw BizException.forbidden("仅项目经理可触发所属项目聚合");
+        if (!ProjectAccessPolicy.canManage(membership)) {
+            throw BizException.forbidden("仅项目经理可触发看板项目");
         }
     }
 
@@ -72,12 +73,9 @@ public class DashboardService {
                 .map(ProjectMember::getProjectId)
                 .collect(Collectors.toCollection(HashSet::new));
 
-        Set<Long> managerProjectIds = projectMemberMapper.selectList(
-                        new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getUserId, currentUserId)
-                                .eq(ProjectMember::getRole, "PROJECT_ADMIN"))
-                .stream()
-                .map(ProjectMember::getProjectId)
-                .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> managerProjectIds = ProjectAccessPolicy.hasProjectManagerSystemRole()
+                ? new HashSet<>(memberProjectIds)
+                : new HashSet<>();
 
         if (memberProjectIds.isEmpty()) {
             return new DashboardScope(Set.of(), true, currentUserId);
@@ -222,3 +220,6 @@ public class DashboardService {
     private record DashboardScope(Set<Long> projectIds, boolean personalView, Long currentUserId) {
     }
 }
+
+
+

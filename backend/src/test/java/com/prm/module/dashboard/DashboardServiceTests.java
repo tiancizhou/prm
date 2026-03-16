@@ -95,7 +95,7 @@ class DashboardServiceTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
-            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(), List.of());
+            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
             OverviewDTO overview = dashboardService.getOverview(null);
 
@@ -124,13 +124,12 @@ class DashboardServiceTests {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
-                    List.of(member(1001L, 8888L, "DEV")),
-                    List.of()
+                    List.of(member(1001L, 8888L, "DEV"))
             );
 
             dashboardService.getOverview(null);
 
-            verify(projectMemberMapper, times(2)).selectList(any(LambdaQueryWrapper.class));
+            verify(projectMemberMapper, times(1)).selectList(any(LambdaQueryWrapper.class));
             verify(requirementMapper, times(2)).selectCount(any(LambdaQueryWrapper.class));
             verify(taskMapper, times(3)).selectCount(any(LambdaQueryWrapper.class));
             verify(bugMapper, times(3)).selectCount(any(LambdaQueryWrapper.class));
@@ -142,14 +141,14 @@ class DashboardServiceTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
-                    List.of(member(1001L, 8888L, "PROJECT_ADMIN")),
-                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"))
+                    List.of(member(1001L, 8888L, "MEMBER"))
             );
 
             dashboardService.getOverview(null);
 
-            verify(projectMemberMapper, times(2)).selectList(any(LambdaQueryWrapper.class));
+            verify(projectMemberMapper, times(1)).selectList(any(LambdaQueryWrapper.class));
             verify(requirementMapper, times(2)).selectCount(any(LambdaQueryWrapper.class));
             verify(taskMapper, times(3)).selectCount(any(LambdaQueryWrapper.class));
             verify(bugMapper, times(3)).selectCount(any(LambdaQueryWrapper.class));
@@ -162,8 +161,7 @@ class DashboardServiceTests {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
-                    List.of(member(1001L, 8888L, "DEV")),
-                    List.of()
+                    List.of(member(1001L, 8888L, "DEV"))
             );
 
             dashboardService.getOverview(1001L);
@@ -176,13 +174,13 @@ class DashboardServiceTests {
     }
 
     @Test
-    void mixedRoleWithoutProjectIdShouldPreferPersonalScopeAcrossAllMemberships() {
+    void systemProjectAdminWithoutProjectIdShouldUseManagerScopeAcrossAllMemberships() {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
-                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"), member(1002L, 8888L, "DEV")),
-                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"))
+                    List.of(member(1001L, 8888L, "MEMBER"), member(1002L, 8888L, "MEMBER"))
             );
 
             dashboardService.getOverview(null);
@@ -190,7 +188,7 @@ class DashboardServiceTests {
             ArgumentCaptor<LambdaQueryWrapper<Task>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
             verify(taskMapper, times(3)).selectCount(captor.capture());
             List<Object> values = captor.getAllValues().stream().flatMap(wrapper -> flattenValues(wrapper).stream()).toList();
-            assertThat(values).contains(8888L, 1001L, 1002L);
+            assertThat(values).contains(1001L, 1002L).doesNotContain(8888L);
         }
     }
 
@@ -199,9 +197,9 @@ class DashboardServiceTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(8888L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(
-                    List.of(member(1001L, 8888L, "PROJECT_ADMIN")),
-                    List.of(member(1001L, 8888L, "PROJECT_ADMIN"))
+                    List.of(member(1001L, 8888L, "MEMBER"))
             );
 
             dashboardService.getOverview(null);
@@ -233,7 +231,8 @@ class DashboardServiceTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(2001L);
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 2001L, "PROJECT_ADMIN"));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 2001L, "MEMBER"));
 
             assertThatCode(() -> dashboardService.requireAggregatePermission(1001L)).doesNotThrowAnyException();
         }

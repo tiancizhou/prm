@@ -164,6 +164,7 @@
               <span class="card-title">{{ overviewText.trendTitle }}</span>
               <div class="card-header-right">
                 <el-tag type="info" size="small" class="chart-range-tag">{{ overviewText.recent7Days }}</el-tag>
+                <el-button link size="small" :icon="Refresh" @click="refreshTrend">{{ overviewText.refresh }}</el-button>
               </div>
             </div>
           </template>
@@ -256,7 +257,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">{{ overviewText.myTodos }}</span>
-              <el-button link size="small" :icon="ArrowRight" @click="goToTasks">{{ overviewText.viewAllTasks }}</el-button>
+              <el-button link size="small" :icon="ArrowRight" @click="goToRequirements">{{ overviewText.viewAllRequirements }}</el-button>
             </div>
           </template>
 
@@ -369,7 +370,8 @@ import {
 } from '@element-plus/icons-vue'
 import { projectApi } from '@/api/project'
 import { dashboardApi } from '@/api/dashboard'
-import { taskApi } from '@/api/task'
+import { requirementApi } from '@/api/requirement'
+import { useAuthStore } from '@/stores/auth'
 import { sprintApi } from '@/api/sprint'
 import { useProjectStore } from '@/stores/project'
 import { PROJECT_OVERVIEW_I18N } from '@/constants/projectOverview'
@@ -379,6 +381,7 @@ import { resolveThemeLocale } from '@/constants/theme'
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
+const authStore = useAuthStore()
 const projectId = Number(route.params.id)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const overviewText = PROJECT_OVERVIEW_I18N[currentLocale]
@@ -541,14 +544,34 @@ function taskStatusLabel(s?: string): string {
 
 function todoStatusDotClass(s?: string): string {
   if (s === 'DONE' || s === 'CLOSED') return 'dot--green'
-  if (s === 'IN_PROGRESS') return 'dot--orange'
+  if (s === 'IN_PROGRESS' || s === 'ACTIVE') return 'dot--orange'
+  if (s === 'PENDING_REVIEW') return 'dot--orange'
   return 'dot--grey'
 }
 
-function isTaskOverdue(task: any): boolean {
-  const dateStr = task.dueDate || task.endDate
+function isTaskOverdue(item: any): boolean {
+  const dateStr = item.dueDate || item.endDate
   if (!dateStr) return false
-  return new Date(dateStr) < new Date() && task.status !== 'DONE' && task.status !== 'CLOSED'
+  return new Date(dateStr) < new Date() && item.status !== 'DONE' && item.status !== 'CLOSED'
+}
+
+// ─── Simulated Trend Data ─────────────────────────────────────────────────────
+function buildTrendData(): TrendPoint[] {
+  const openTasks = stats.value?.inProgressTasks ?? 8
+  const openBugs = stats.value?.openBugs ?? 4
+  const result: TrendPoint[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const label = `${d.getMonth() + 1}/${d.getDate()}`
+    const factor = i / 6
+    result.push({
+      date: label,
+      tasks: Math.max(1, Math.round(openTasks * (0.6 + factor * 0.6) + (Math.random() * 3 - 1))),
+      bugs: Math.max(0, Math.round(openBugs * (0.5 + factor * 0.7) + (Math.random() * 2 - 1)))
+    })
+  }
+  return result
 }
 
 // ─── Data Loading ─────────────────────────────────────────────────────────────
@@ -577,10 +600,16 @@ async function loadStats(): Promise<void> {
 async function loadTodos(): Promise<void> {
   todosLoading.value = true
   try {
-    const res = await taskApi.list({ projectId, pageSize: 5 })
+    const uid = authStore.user?.userId
+    const res = await requirementApi.list({
+      projectId,
+      ...(uid ? { assigneeId: uid } : {}),
+      page: 1,
+      size: 5
+    })
     const data = (res as any).data
     const list: any[] = data?.records ?? data?.list ?? (Array.isArray(data) ? data : [])
-    myTodos.value = list.slice(0, 5)
+    myTodos.value = list.filter((r: any) => r.status !== 'DONE' && r.status !== 'CLOSED').slice(0, 5)
   } catch {
     myTodos.value = []
   } finally {
@@ -602,7 +631,7 @@ async function loadSprint(): Promise<void> {
 async function loadActivity(): Promise<void> {
   activityLoading.value = true
   try {
-    const res = await taskApi.list({ projectId, pageSize: 8 })
+    const res = await requirementApi.list({ projectId, page: 1, size: 8 })
     const data = (res as any).data
     const list: any[] = data?.records ?? data?.list ?? (Array.isArray(data) ? data : [])
     const actionMap = overviewText.activityActionMap
@@ -610,14 +639,15 @@ async function loadActivity(): Promise<void> {
       DONE: 'success',
       CLOSED: 'success',
       IN_PROGRESS: 'warning',
-      TODO: 'primary'
+      ACTIVE: 'primary',
+      PENDING_REVIEW: 'warning'
     }
-    activities.value = list.slice(0, 8).map((t: any) => ({
-      actor: t.assigneeName ?? t.creatorName ?? overviewText.teamMemberFallback,
-      action: actionMap[t.status] ?? overviewText.updatedFallback,
-      target: t.title ?? `${overviewText.taskPrefix} #${t.id}`,
-      time: formatRelativeTime(t.updatedAt ?? t.createdAt),
-      type: typeMap[t.status] ?? 'primary'
+    activities.value = list.slice(0, 8).map((r: any) => ({
+      actor: r.assigneeName ?? overviewText.teamMemberFallback,
+      action: actionMap[r.status] ?? overviewText.updatedFallback,
+      target: r.title ?? `${overviewText.requirementPrefix} #${r.id}`,
+      time: formatRelativeTime(r.updatedAt ?? r.createdAt),
+      type: typeMap[r.status] ?? 'primary'
     }))
   } catch {
     activities.value = []
@@ -627,7 +657,7 @@ async function loadActivity(): Promise<void> {
 }
 
 function refreshTrend(): void {
-  trendData.value = []
+  trendData.value = buildTrendData()
 }
 
 // ─── Edit Description ─────────────────────────────────────────────────────────
@@ -650,14 +680,15 @@ async function saveDesc(): Promise<void> {
   }
 }
 
-function goToTasks(): void {
-  router.push(`/projects/${projectId}/tasks`)
+function goToRequirements(): void {
+  router.push(`/projects/${projectId}/requirements`)
 }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
   await loadProject()
   await Promise.all([loadStats(), loadTodos(), loadSprint(), loadActivity()])
+  trendData.value = buildTrendData()
 })
 </script>
 

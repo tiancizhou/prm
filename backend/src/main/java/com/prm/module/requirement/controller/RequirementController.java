@@ -3,7 +3,6 @@ package com.prm.module.requirement.controller;
 import com.prm.common.result.PageResult;
 import com.prm.common.result.R;
 import com.prm.common.exception.BizException;
-import com.prm.module.log.annotation.OperLog;
 import com.prm.module.requirement.application.RequirementService;
 import com.prm.module.requirement.dto.CreateRequirementRequest;
 import com.prm.module.requirement.dto.RequirementDTO;
@@ -60,7 +59,6 @@ public class RequirementController {
     }
 
     @Operation(summary = "创建需求")
-    @OperLog(module = "REQUIREMENT", action = "CREATE", bizType = "REQUIREMENT")
     @PostMapping
     public R<RequirementDTO> create(@Valid @RequestBody CreateRequirementRequest request) {
         return R.ok(requirementService.create(request));
@@ -73,14 +71,12 @@ public class RequirementController {
     }
 
     @Operation(summary = "更新需求")
-    @OperLog(module = "REQUIREMENT", action = "UPDATE", bizType = "REQUIREMENT")
     @PutMapping("/{id}")
     public R<RequirementDTO> update(@PathVariable Long id, @Valid @RequestBody UpdateRequirementRequest request) {
         return R.ok(requirementService.update(id, request));
     }
 
     @Operation(summary = "需求状态流转")
-    @OperLog(module = "REQUIREMENT", action = "UPDATE_STATUS", bizType = "REQUIREMENT")
     @PutMapping("/{id}/status")
     public R<RequirementDTO> updateStatus(@PathVariable Long id,
                                           @RequestParam String status,
@@ -123,7 +119,6 @@ public class RequirementController {
     }
 
     @Operation(summary = "添加需求评审记录")
-    @OperLog(module = "REQUIREMENT", action = "ADD_REVIEW", bizType = "REQUIREMENT")
     @PostMapping("/{id}/review")
     public R<Void> addReview(@PathVariable Long id,
                               @RequestParam String conclusion,
@@ -139,7 +134,6 @@ public class RequirementController {
     }
 
     @Operation(summary = "添加需求备注")
-    @OperLog(module = "REQUIREMENT", action = "ADD_COMMENT", bizType = "REQUIREMENT")
     @PostMapping("/{id}/logs")
     public R<RequirementLogDTO> addComment(@PathVariable Long id,
                                            @RequestBody Map<String, String> body) {

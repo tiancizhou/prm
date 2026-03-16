@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.prm.common.exception.BizException;
 import com.prm.common.util.SecurityUtil;
+import com.prm.module.project.domain.ProjectAccessPolicy;
 import com.prm.module.project.entity.ProjectMember;
 import com.prm.module.project.mapper.ProjectMemberMapper;
 import com.prm.module.requirement.entity.Requirement;
@@ -72,10 +73,9 @@ public class TaskService {
                 Set<Long> allProjectIds = memberships.stream()
                         .map(ProjectMember::getProjectId)
                         .collect(Collectors.toCollection(HashSet::new));
-                Set<Long> managerProjectIds = memberships.stream()
-                        .filter(member -> "PROJECT_ADMIN".equalsIgnoreCase(member.getRole()))
-                        .map(ProjectMember::getProjectId)
-                        .collect(Collectors.toCollection(HashSet::new));
+                Set<Long> managerProjectIds = ProjectAccessPolicy.hasProjectManagerSystemRole()
+                        ? new HashSet<>(allProjectIds)
+                        : new HashSet<>();
 
                 if (managerProjectIds.isEmpty()) {
                     wrapper.in(Task::getProjectId, allProjectIds)
@@ -112,6 +112,8 @@ public class TaskService {
         if (StringUtils.hasText(status)) wrapper.eq(Task::getStatus, status);
         if (StringUtils.hasText(keyword)) wrapper.like(Task::getTitle, keyword);
         if (requirementId != null) wrapper.eq(Task::getRequirementId, requirementId);
+        if (assigneeId != null) wrapper.eq(Task::getAssigneeId, assigneeId);
+        pageReq.setOptimizeCountSql(false);
         return taskMapper.selectPage(pageReq, wrapper).convert(this::toDTO);
     }
 
@@ -144,7 +146,7 @@ public class TaskService {
 
     public TaskDTO getById(Long id) {
         Task task = taskMapper.selectById(id);
-        if (task == null || task.getDeleted() == 1) throw BizException.notFound("浠诲姟");
+        if (task == null || task.getDeleted() == 1) throw BizException.notFound("任务");
         ensureReadable(task);
         return toDTO(task);
     }
@@ -153,7 +155,7 @@ public class TaskService {
     public TaskDTO updateStatus(Long id, String newStatus) {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         Task task = taskMapper.selectById(id);
-        if (task == null) throw BizException.notFound("浠诲姟");
+        if (task == null) throw BizException.notFound("任务");
         ensureOperable(task);
         stateMachine.transit(task.getStatus(), newStatus);
         task.setStatus(newStatus);
@@ -165,7 +167,7 @@ public class TaskService {
     @Transactional
     public TaskDTO assign(Long id, Long assigneeId) {
         Task task = taskMapper.selectById(id);
-        if (task == null) throw BizException.notFound("浠诲姟");
+        if (task == null) throw BizException.notFound("任务");
         ensureProjectManager(task.getProjectId());
         task.setAssigneeId(assigneeId);
         task.setUpdatedBy(SecurityUtil.getCurrentUserId());
@@ -176,7 +178,7 @@ public class TaskService {
     @Transactional
     public void logWork(Long taskId, BigDecimal spentHours, String remark) {
         Task task = taskMapper.selectById(taskId);
-        if (task == null) throw BizException.notFound("浠诲姟");
+        if (task == null) throw BizException.notFound("任务");
         Long userId = SecurityUtil.getCurrentUserId();
         TaskWorklog log = new TaskWorklog();
         log.setTaskId(taskId);
@@ -208,12 +210,12 @@ public class TaskService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(task.getProjectId(), currentUserId);
         if (membership == null) {
-            throw BizException.forbidden("鏃犳潈鏌ョ湅璇ヤ换鍔?");
+            throw BizException.forbidden("无项目查看权限");
         }
         if (isProjectManager(membership) || Objects.equals(currentUserId, task.getAssigneeId())) {
             return;
         }
-        throw BizException.forbidden("浠呭彲鏌ョ湅鍒嗛厤缁欒嚜宸辩殑浠诲姟");
+        throw BizException.forbidden("仅项目负责人或任务指派人可查看");
     }
 
     private void ensureOperable(Task task) {
@@ -223,12 +225,12 @@ public class TaskService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(task.getProjectId(), currentUserId);
         if (membership == null) {
-            throw BizException.forbidden("鏃犳潈鎿嶄綔璇ヤ换鍔?");
+            throw BizException.forbidden("无项目编辑权限");
         }
         if (isProjectManager(membership) || Objects.equals(currentUserId, task.getAssigneeId())) {
             return;
         }
-        throw BizException.forbidden("浠呭彲鎿嶄綔鍒嗛厤缁欒嚜宸辩殑浠诲姟");
+        throw BizException.forbidden("仅项目负责人或任务指派人可操作");
     }
 
     private void ensureProjectManager(Long projectId) {
@@ -238,7 +240,7 @@ public class TaskService {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         ProjectMember membership = findMembership(projectId, currentUserId);
         if (!isProjectManager(membership)) {
-            throw BizException.forbidden("鍙湁椤圭洰缁忕悊鎴栬秴绾х鐞嗗憳鎵嶈兘鎿嶄綔浠诲姟");
+            throw BizException.forbidden("仅项目经理可操作");
         }
     }
 
@@ -249,7 +251,7 @@ public class TaskService {
     }
 
     private boolean isProjectManager(ProjectMember membership) {
-        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
+        return ProjectAccessPolicy.canManage(membership);
     }
 
     private TaskDTO toDTO(Task t) {
@@ -285,3 +287,5 @@ public class TaskService {
         return dto;
     }
 }
+
+

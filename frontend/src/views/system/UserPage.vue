@@ -2,8 +2,8 @@
   <div class="app-page user-page">
     <header class="page-header">
       <div class="title-block">
-        <h1 class="page-title">{{ userText.pageTitle }}</h1>
-        <p class="page-subtitle">{{ userText.pageSubtitle }}</p>
+        <h1 class="page-title">{{ pageTitle }}</h1>
+        <p class="page-subtitle">{{ pageSubtitle }}</p>
       </div>
       <div class="page-actions">
         <el-button type="primary" :icon="Plus" @click="showCreate = true">{{ userText.buttons.newUser }}</el-button>
@@ -143,7 +143,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import http from '@/api/http'
+import { ORGANIZATION_I18N } from '@/constants/organization'
 import { resolveThemeLocale } from '@/constants/theme'
 import { USER_PAGE_I18N } from '@/constants/user'
 
@@ -153,8 +155,10 @@ interface Role {
   code: string
 }
 
+const route = useRoute()
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const userText = USER_PAGE_I18N[currentLocale]
+const organizationText = ORGANIZATION_I18N[currentLocale]
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -164,6 +168,9 @@ const pageSize = ref(20)
 const keyword = ref('')
 const allRoles = ref<Role[]>([])
 const roleNameMap = computed<Record<string, string>>(() => Object.fromEntries(allRoles.value.map(role => [role.code, role.name])))
+const isOrganizationUsersPage = computed(() => route.name === 'OrganizationUsers')
+const pageTitle = computed(() => (isOrganizationUsersPage.value ? organizationText.peoplePage.title : userText.pageTitle))
+const pageSubtitle = computed(() => (isOrganizationUsersPage.value ? organizationText.peoplePage.subtitle : userText.pageSubtitle))
 
 const showCreate = ref(false)
 const showEdit = ref(false)

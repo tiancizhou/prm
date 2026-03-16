@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -53,15 +52,19 @@ public class AttachmentController {
     @GetMapping("/{requirementId}/attachments/{attachmentId}/download")
     public ResponseEntity<Resource> download(
             @PathVariable Long requirementId,
-            @PathVariable Long attachmentId) throws UnsupportedEncodingException {
+            @PathVariable Long attachmentId) {
         var result = attachmentService.getFileForDownload(requirementId, attachmentId);
         Resource resource = new FileSystemResource(result.path.toFile());
-        String encodedFilename = URLEncoder.encode(result.filename, StandardCharsets.UTF_8.toString())
+        // RFC 5987：filename* 用于现代浏览器（支持 UTF-8 中文）
+        String encodedFilename = URLEncoder.encode(result.filename, StandardCharsets.UTF_8)
                 .replace("+", "%20");
+        // filename= 用于兼容旧浏览器，非 ASCII 字符先转义为 ? 避免头部非法字节
+        String asciiFilename = result.filename.replaceAll("[^\\x20-\\x7E]", "?");
+        String contentDisposition = "attachment; filename=\"" + asciiFilename
+                + "\"; filename*=UTF-8''" + encodedFilename;
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename*=UTF-8''" + encodedFilename)
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .body(resource);
     }
 }

@@ -76,7 +76,7 @@ class BugServicePermissionTests {
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(member(1001L, 3001L, "DEV")));
 
-            bugService.page(1, 20, 1001L, null, null, null);
+            bugService.page(1, 20, 1001L, null, null, null, null, null);
 
             verify(projectMemberMapper).selectList(any(LambdaQueryWrapper.class));
             verify(bugMapper).selectPage(any(Page.class), any(LambdaQueryWrapper.class));
@@ -88,9 +88,10 @@ class BugServicePermissionTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
-            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(member(1001L, 3001L, "PROJECT_ADMIN")));
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
+            when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(member(1001L, 3001L, "MEMBER")));
 
-            bugService.page(1, 20, 1001L, null, null, null);
+            bugService.page(1, 20, 1001L, null, null, null, null, null);
 
             ArgumentCaptor<LambdaQueryWrapper<Bug>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
             verify(bugMapper).selectPage(any(Page.class), captor.capture());
@@ -105,7 +106,7 @@ class BugServicePermissionTests {
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(member(1002L, 3001L, "DEV")));
 
-            IPage<BugDTO> page = bugService.page(1, 20, 1001L, null, null, null);
+            IPage<BugDTO> page = bugService.page(1, 20, 1001L, null, null, null, null, null);
 
             assertThat(page.getRecords()).isEmpty();
             verify(bugMapper, never()).selectPage(any(Page.class), any(LambdaQueryWrapper.class));
@@ -113,19 +114,21 @@ class BugServicePermissionTests {
     }
 
     @Test
-    void mixedMembershipWithoutProjectIdShouldKeepManagerAndMemberScopes() {
+    void systemProjectAdminWithoutProjectIdShouldManageAllMembershipProjects() {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
             when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
-                    member(1001L, 3001L, "PROJECT_ADMIN"),
-                    member(1002L, 3001L, "DEV")
+                    member(1001L, 3001L, "MEMBER"),
+                    member(1002L, 3001L, "MEMBER")
             ));
 
-            bugService.page(1, 20, null, null, null, null);
+            bugService.page(1, 20, null, null, null, null, null, null);
 
-            verify(projectMemberMapper).selectList(any(LambdaQueryWrapper.class));
-            verify(bugMapper).selectPage(any(Page.class), any(LambdaQueryWrapper.class));
+            ArgumentCaptor<LambdaQueryWrapper<Bug>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(bugMapper).selectPage(any(Page.class), captor.capture());
+            assertThat(captor.getValue().getParamNameValuePairs().values()).contains(1001L, 1002L).doesNotContain(3001L);
         }
     }
 
@@ -162,8 +165,9 @@ class BugServicePermissionTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
             when(bugMapper.selectById(9001L)).thenReturn(bug(9001L, 1001L, 4001L));
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> bugService.assign(9001L, 3002L)).doesNotThrowAnyException();
         }
@@ -207,8 +211,9 @@ class BugServicePermissionTests {
         try (MockedStatic<SecurityUtil> securityUtil = Mockito.mockStatic(SecurityUtil.class)) {
             securityUtil.when(SecurityUtil::isSuperAdmin).thenReturn(false);
             securityUtil.when(SecurityUtil::getCurrentUserId).thenReturn(3001L);
+            securityUtil.when(() -> SecurityUtil.hasRole("PROJECT_ADMIN")).thenReturn(true);
             when(bugMapper.selectById(9001L)).thenReturn(bug(9001L, 1001L, 4001L));
-            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "PROJECT_ADMIN"));
+            when(projectMemberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(member(1001L, 3001L, "MEMBER"));
 
             assertThatCode(() -> bugService.convertToRequirement(9001L)).doesNotThrowAnyException();
 

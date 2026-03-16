@@ -39,7 +39,7 @@
       <el-table :data="projects" v-loading="loading" class="project-table" :empty-text="projectListText.labels.tableEmpty">
         <el-table-column prop="name" :label="projectListText.labels.projectName" min-width="220">
           <template #default="{ row }">
-            <el-link type="primary" @click="enterProject(row)">{{ row.name }}</el-link>
+            <RouterLink :to="`/projects/${row.id}/overview`" class="workspace-link-text workspace-link-text--primary" @click="projectStore.setCurrentProject(row)">{{ row.name }}</RouterLink>
           </template>
         </el-table-column>
         <el-table-column prop="code" :label="projectListText.labels.code" width="140" />
@@ -115,6 +115,7 @@ import type { FormInstance } from 'element-plus'
 import { projectApi, type Project } from '@/api/project'
 import { PROJECT_LIST_I18N } from '@/constants/projectList'
 import { resolveThemeLocale } from '@/constants/theme'
+import { ACTION_PERMISSION_MAP } from '@/utils/permission'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/project'
 
@@ -124,10 +125,7 @@ const authStore = useAuthStore()
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const projectListText = PROJECT_LIST_I18N[currentLocale]
 
-const canCreateProject = computed(() => {
-  const roles = authStore.user?.roles ?? []
-  return roles.includes('SUPER_ADMIN') || roles.includes('PROJECT_ADMIN')
-})
+const canCreateProject = computed(() => authStore.canAccess(ACTION_PERMISSION_MAP.projectCreate))
 
 const loading = ref(false)
 const projects = ref<Project[]>([])
@@ -291,10 +289,6 @@ onMounted(() => {
 
 .project-table :deep(.el-table__row:hover) {
   background-color: var(--app-bg-muted) !important;
-}
-
-.project-table :deep(.el-link) {
-  font-weight: 600;
 }
 
 .table-footer {

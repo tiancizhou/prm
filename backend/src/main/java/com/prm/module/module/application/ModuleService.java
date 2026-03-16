@@ -8,8 +8,6 @@ import com.prm.module.module.dto.ModuleDTO;
 import com.prm.module.module.dto.SaveModuleRequest;
 import com.prm.module.module.entity.PrmModule;
 import com.prm.module.module.mapper.ModuleMapper;
-import com.prm.module.project.entity.ProjectMember;
-import com.prm.module.project.mapper.ProjectMemberMapper;
 import com.prm.module.requirement.entity.Requirement;
 import com.prm.module.requirement.mapper.RequirementMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +23,8 @@ public class ModuleService {
 
     private final ModuleMapper moduleMapper;
     private final RequirementMapper requirementMapper;
-    private final ProjectMemberMapper projectMemberMapper;
 
     public List<ModuleDTO> listTree(Long projectId) {
-        ensureProjectMember(projectId);
         List<PrmModule> all = moduleMapper.selectList(
                 new LambdaQueryWrapper<PrmModule>()
                         .eq(PrmModule::getProjectId, projectId)
@@ -51,13 +47,8 @@ public class ModuleService {
     }
 
     public ModuleDTO create(Long projectId, SaveModuleRequest req) {
-        ensureProjectManager(projectId);
-        if (req.getParentId() != null) {
-            PrmModule parent = moduleMapper.selectById(req.getParentId());
-            if (parent == null || parent.getDeleted() == 1) {
-                throw BizException.notFound("父模块");
-            }
-            ensureModuleBelongsToProject(parent, projectId);
+        if (!SecurityUtil.isManager()) {
+            throw BizException.forbidden("只有项目管理员才能创建模块");
         }
         PrmModule m = new PrmModule();
         m.setProjectId(projectId);
@@ -72,13 +63,14 @@ public class ModuleService {
         return toDTO(m);
     }
 
-    public ModuleDTO update(Long projectId, Long id, SaveModuleRequest req) {
-        ensureProjectManager(projectId);
+    public ModuleDTO update(Long id, SaveModuleRequest req) {
+        if (!SecurityUtil.isManager()) {
+            throw BizException.forbidden("只有项目管理员才能修改模块");
+        }
         PrmModule m = moduleMapper.selectById(id);
         if (m == null || m.getDeleted() == 1) {
             throw BizException.notFound("模块");
         }
-        ensureModuleBelongsToProject(m, projectId);
         m.setName(req.getName());
         if (req.getSortOrder() != null) {
             m.setSortOrder(req.getSortOrder());
@@ -89,13 +81,14 @@ public class ModuleService {
         return toDTO(m);
     }
 
-    public void delete(Long projectId, Long id) {
-        ensureProjectManager(projectId);
+    public void delete(Long id) {
+        if (!SecurityUtil.isManager()) {
+            throw BizException.forbidden("只有项目管理员才能删除模块");
+        }
         PrmModule m = moduleMapper.selectById(id);
         if (m == null || m.getDeleted() == 1) {
             throw BizException.notFound("模块");
         }
-        ensureModuleBelongsToProject(m, projectId);
         // 软删除模块
         m.setDeleted(1);
         m.setUpdatedBy(SecurityUtil.getCurrentUserId());
@@ -107,42 +100,6 @@ public class ModuleService {
                 new LambdaUpdateWrapper<Requirement>()
                         .eq(Requirement::getModuleId, id)
                         .set(Requirement::getModuleId, null));
-    }
-
-    private void ensureProjectMember(Long projectId) {
-        if (SecurityUtil.isSuperAdmin()) {
-            return;
-        }
-        ProjectMember membership = findMembership(projectId, SecurityUtil.getCurrentUserId());
-        if (membership == null) {
-            throw BizException.forbidden("无权查看该项目模块");
-        }
-    }
-
-    private void ensureProjectManager(Long projectId) {
-        if (SecurityUtil.isSuperAdmin()) {
-            return;
-        }
-        ProjectMember membership = findMembership(projectId, SecurityUtil.getCurrentUserId());
-        if (!isProjectManager(membership)) {
-            throw BizException.forbidden("只有项目管理员才能维护模块");
-        }
-    }
-
-    private ProjectMember findMembership(Long projectId, Long userId) {
-        return projectMemberMapper.selectOne(new LambdaQueryWrapper<ProjectMember>()
-                .eq(ProjectMember::getProjectId, projectId)
-                .eq(ProjectMember::getUserId, userId));
-    }
-
-    private boolean isProjectManager(ProjectMember membership) {
-        return membership != null && "PROJECT_ADMIN".equalsIgnoreCase(membership.getRole());
-    }
-
-    private void ensureModuleBelongsToProject(PrmModule module, Long projectId) {
-        if (!Objects.equals(module.getProjectId(), projectId)) {
-            throw BizException.forbidden("模块不属于当前项目");
-        }
     }
 
     private ModuleDTO toDTO(PrmModule m) {

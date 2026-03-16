@@ -1,104 +1,76 @@
 <template>
   <div class="app-page dashboard-page" v-loading="loading">
-    <header class="page-header">
-      <div>
-        <h1 class="page-title">{{ dashboardText.pageTitle }}</h1>
-        <p class="page-subtitle">{{ dashboardText.pageSubtitle }}</p>
-      </div>
-      <div class="page-actions">
+    <header class="page-header dashboard-header">
+      <div class="dashboard-header-top">
         <div class="dashboard-date">{{ todayLabel }}</div>
+        <p class="dashboard-summary">{{ dashboardText.summaryMessage }}</p>
+      </div>
+      <div class="dashboard-greeting-row">
+        <div class="greeting-block">
+          <el-avatar :size="48" class="greeting-avatar">
+            {{ userInitial }}
+          </el-avatar>
+          <div class="greeting-text">
+            <h1 class="page-title greeting-title">{{ greetingText }}</h1>
+            <p class="page-subtitle greeting-subtitle">{{ dashboardText.pageSubtitle }}</p>
+          </div>
+        </div>
       </div>
     </header>
 
-    <section class="metrics-grid">
-      <el-card v-for="item in metricCards" :key="item.key" class="metric-card" shadow="never">
-        <div class="metric-icon" :class="item.tone">
-          <el-icon><component :is="item.icon" /></el-icon>
+    <section class="dashboard-my-stats">
+      <div class="stats-section stats-section--assigned">
+        <h2 class="stats-section-title">{{ dashboardText.assignedToMe }}</h2>
+        <div class="stat-cards-row">
+          <el-card class="stat-card" shadow="never">
+            <div class="stat-value stat-value--primary">{{ myBugCount }}</div>
+            <div class="stat-label">{{ dashboardText.bugCount }}</div>
+          </el-card>
+          <el-card class="stat-card" shadow="never">
+            <div class="stat-value stat-value--primary">{{ myRequirementCount }}</div>
+            <div class="stat-label">{{ dashboardText.requirementCount }}</div>
+          </el-card>
         </div>
-        <div class="metric-main">
-          <strong>{{ item.value }}</strong>
-          <span>{{ item.label }}</span>
+      </div>
+      <div class="stats-section stats-section--assigned">
+        <h2 class="stats-section-title">{{ dashboardText.completedTitle }}</h2>
+        <div class="stat-cards-row">
+          <el-card class="stat-card" shadow="never">
+            <div class="stat-value stat-value--success">{{ myCompletedRequirementCount }}</div>
+            <div class="stat-label">{{ dashboardText.completedRequirementCount }}</div>
+          </el-card>
+          <el-card class="stat-card" shadow="never">
+            <div class="stat-value stat-value--success">{{ myResolvedBugCount }}</div>
+            <div class="stat-label">{{ dashboardText.resolvedBugCount }}</div>
+          </el-card>
         </div>
-      </el-card>
-    </section>
-
-    <section class="insight-grid">
-      <el-card shadow="never" class="surface-card">
-        <template #header>
-          <div class="card-title-row">
-            <span>{{ dashboardText.requirementDelivery }}</span>
-            <el-tag type="success" effect="light">{{ requirementCompletion }}</el-tag>
-          </div>
-        </template>
-        <el-descriptions :column="2" border>
-          <el-descriptions-item :label="dashboardText.requirementLabels.totalRequirements">
-            {{ overview?.totalRequirements ?? '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="dashboardText.requirementLabels.doneRequirements">
-            {{ overview?.doneRequirements ?? '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="dashboardText.requirementLabels.completion">
-            {{ requirementCompletion }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="dashboardText.requirementLabels.inProgressTasks">
-            {{ overview?.inProgressTasks ?? '-' }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <el-card shadow="never" class="surface-card">
-        <template #header>
-          <div class="card-title-row">
-            <span>{{ dashboardText.qualityStatus }}</span>
-            <el-tag type="danger" effect="light">
-              {{ overview?.criticalOpenBugs ?? 0 }} {{ dashboardText.criticalSuffix }}
-            </el-tag>
-          </div>
-        </template>
-        <el-descriptions :column="2" border>
-          <el-descriptions-item :label="dashboardText.qualityLabels.totalBugs">
-            {{ overview?.totalBugs ?? '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="dashboardText.qualityLabels.openBugs">
-            {{ overview?.openBugs ?? '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="dashboardText.qualityLabels.criticalOrBlocker">
-            {{ overview?.criticalOpenBugs ?? '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item :label="dashboardText.qualityLabels.overdueProjects">
-            {{ overview?.overdueProjects ?? '-' }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-card>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { CircleCheckFilled, DataAnalysis, FolderOpened, WarningFilled } from '@element-plus/icons-vue'
-import { dashboardApi } from '@/api/dashboard'
+import { useAuthStore } from '@/stores/auth'
+import { bugApi } from '@/api/bug'
+import { requirementApi } from '@/api/requirement'
 import { DASHBOARD_I18N } from '@/constants/dashboard'
 import { resolveThemeLocale } from '@/constants/theme'
 
-interface Overview {
-  activeProjects: number
-  overdueProjects: number
-  openBugs: number
-  inProgressTasks: number
-  totalRequirements: number
-  doneRequirements: number
-  totalBugs: number
-  criticalOpenBugs: number
-}
-
+const authStore = useAuthStore()
 const loading = ref(false)
-const overview = ref<Overview | null>(null)
 const currentLocale = resolveThemeLocale(typeof navigator === 'undefined' ? 'en-US' : navigator.language)
 const dashboardText = DASHBOARD_I18N[currentLocale]
 
+const myBugCount = ref(0)
+const myRequirementCount = ref(0)
+const myCompletedRequirementCount = ref(0)
+const myResolvedBugCount = ref(0)
+
+const userId = computed(() => authStore.user?.userId ?? 0)
+
 const todayLabel = computed(() => {
-  return new Intl.DateTimeFormat(currentLocale, {
+  return new Intl.DateTimeFormat(currentLocale === 'zh-CN' ? 'zh-CN' : 'en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -106,171 +78,163 @@ const todayLabel = computed(() => {
   }).format(new Date())
 })
 
-const requirementCompletion = computed(() => {
-  if (!overview.value?.totalRequirements) {
-    return '0%'
+const greetingPeriod = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return dashboardText.greetingPeriod.morning
+  if (hour < 18) return dashboardText.greetingPeriod.afternoon
+  return dashboardText.greetingPeriod.evening
+})
+
+const greetingText = computed(() => {
+  const name = authStore.user?.nickname || authStore.user?.username || 'User'
+  return dashboardText.greeting(name, greetingPeriod.value)
+})
+
+const userInitial = computed(() => {
+  const name = authStore.user?.nickname || authStore.user?.username || 'U'
+  return name.slice(0, 1).toUpperCase()
+})
+
+async function loadMyStats() {
+  const uid = userId.value
+  if (!uid) {
+    loading.value = false
+    return
   }
-  return `${Math.round((overview.value.doneRequirements / overview.value.totalRequirements) * 100)}%`
-})
-
-const metricCards = computed(() => {
-  return [
-    {
-      key: 'activeProjects',
-      label: dashboardText.metricLabels.activeProjects,
-      value: overview.value?.activeProjects ?? '-',
-      icon: FolderOpened,
-      tone: 'tone-blue'
-    },
-    {
-      key: 'overdueProjects',
-      label: dashboardText.metricLabels.overdueProjects,
-      value: overview.value?.overdueProjects ?? '-',
-      icon: WarningFilled,
-      tone: 'tone-amber'
-    },
-    {
-      key: 'openBugs',
-      label: dashboardText.metricLabels.openBugs,
-      value: overview.value?.openBugs ?? '-',
-      icon: DataAnalysis,
-      tone: 'tone-red'
-    },
-    {
-      key: 'inProgressTasks',
-      label: dashboardText.metricLabels.inProgressTasks,
-      value: overview.value?.inProgressTasks ?? '-',
-      icon: CircleCheckFilled,
-      tone: 'tone-green'
-    }
-  ]
-})
-
-async function loadOverview() {
   loading.value = true
   try {
-    const response = await dashboardApi.overview()
-    overview.value = (response as any).data
+    const [
+      bugRes,
+      reqRes,
+      reqDoneRes,
+      reqClosedRes,
+      bugResolvedRes,
+      bugClosedRes
+    ] = await Promise.all([
+      bugApi.list({ assigneeId: uid, page: 1, size: 1 }),
+      requirementApi.list({ assigneeId: uid, page: 1, size: 1 }),
+      requirementApi.list({ assigneeId: uid, status: 'DONE', page: 1, size: 1 }),
+      requirementApi.list({ assigneeId: uid, status: 'CLOSED', page: 1, size: 1 }),
+      bugApi.list({ assigneeId: uid, status: 'RESOLVED', page: 1, size: 1 }),
+      bugApi.list({ assigneeId: uid, status: 'CLOSED', page: 1, size: 1 })
+    ])
+    myBugCount.value = (bugRes as any).data?.total ?? 0
+    myRequirementCount.value = (reqRes as any).data?.total ?? 0
+    myCompletedRequirementCount.value =
+      ((reqDoneRes as any).data?.total ?? 0) + ((reqClosedRes as any).data?.total ?? 0)
+    myResolvedBugCount.value =
+      ((bugResolvedRes as any).data?.total ?? 0) + ((bugClosedRes as any).data?.total ?? 0)
   } finally {
     loading.value = false
   }
 }
 
-onMounted(loadOverview)
+onMounted(loadMyStats)
 </script>
 
 <style scoped>
-.dashboard-date {
-  font-size: 13px;
-  color: var(--app-text-secondary);
-  background: var(--app-bg-elevated);
-  border: 1px solid var(--app-border-soft);
-  border-radius: var(--app-radius-pill);
-  padding: var(--space-sm) var(--space-md);
+.dashboard-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
 }
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
-  gap: var(--space-lg);
-}
-
-.metric-card {
-  border-radius: var(--app-radius-md);
-  min-height: 112px;
-}
-
-.metric-card :deep(.el-card__body) {
-  display: grid;
-  grid-template-columns: 52px 1fr;
+.dashboard-header-top {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
 }
-
-.metric-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--app-radius-sm);
-  display: grid;
-  place-items: center;
-  font-size: 22px;
+.dashboard-date {
+  font-size: 14px;
+  color: var(--app-text-secondary);
 }
-
-.tone-blue {
-  color: var(--app-color-primary);
-  background: var(--app-color-primary-soft);
+.dashboard-summary {
+  font-size: 14px;
+  color: var(--app-text-secondary);
+  margin: 0;
 }
-
-.tone-amber {
-  color: var(--app-color-warning);
-  background: var(--app-color-warning-soft);
+.dashboard-greeting-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
 }
-
-.tone-red {
-  color: var(--app-color-danger);
-  background: var(--app-color-danger-soft);
+.greeting-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
 }
-
-.tone-green {
-  color: var(--app-color-success);
-  background: var(--app-color-success-soft);
+.greeting-avatar {
+  background: var(--app-color-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
 }
-
-.metric-main {
+.greeting-text {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
+.greeting-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+.greeting-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--app-text-secondary);
+}
 
-.metric-main strong {
-  font-size: 34px;
+.dashboard-my-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+.stats-section-title {
+  margin: 0 0 var(--space-md);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+.stats-section--assigned .stat-cards-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: var(--space-lg);
+}
+.stat-card {
+  border-radius: var(--app-radius-md);
+  text-align: center;
+  padding: var(--space-lg);
+  min-height: 100px;
+}
+.stat-card :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
   line-height: 1;
   color: var(--app-text-primary);
 }
-
-.metric-main span {
-  color: var(--app-text-secondary);
+.stat-value--primary {
+  color: var(--app-color-primary);
+}
+.stat-value--success {
+  color: var(--app-color-success);
+}
+.stat-label {
   font-size: 14px;
+  color: var(--app-text-secondary);
 }
-
-.insight-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-lg);
-}
-
-.card-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 15px;
-  color: var(--app-text-primary);
-}
-
-@media (max-width: 1439px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1919px) {
-  .metrics-grid {
-    gap: var(--space-md);
-  }
-
-  .metric-main strong {
-    font-size: 32px;
-  }
-}
-
-@media (max-width: 1365px) {
-  .insight-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 1199px) {
-  .metrics-grid {
+@media (max-width: 767px) {
+  .stats-section--assigned .stat-cards-row {
     grid-template-columns: 1fr;
   }
 }
