@@ -88,7 +88,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/api/http'
 import { projectApi } from '@/api/project'
 import { PROJECT_MEMBERS_I18N } from '@/constants/projectMembers'
-import { getRoleGroupTagType } from '@/constants/roleGroupCode'
+import { getRoleGroupTagType, type RoleGroupTagType } from '@/constants/roleGroupCode'
 import { resolveThemeLocale } from '@/constants/theme'
 import { useProjectStore } from '@/stores/project'
 
@@ -100,7 +100,7 @@ const membersText = PROJECT_MEMBERS_I18N[currentLocale]
 
 const loading = ref(false)
 const members = ref<any[]>([])
-const allRoles = ref<Array<{ code: string; tagType?: string }>>([])
+const allRoles = ref<Array<{ code: string; tagType?: RoleGroupTagType }>>([])
 
 const showAdd = ref(false)
 const adding = ref(false)
@@ -114,7 +114,7 @@ const canManageMembers = computed(() => {
   return currentProject?.id === projectId && currentProject?.canEdit === true
 })
 
-const roleTagTypeMapFromApi = computed<Record<string, string>>(() =>
+const roleTagTypeMapFromApi = computed<Record<string, RoleGroupTagType>>(() =>
   Object.fromEntries(
     allRoles.value
       .filter((r) => r.tagType)
@@ -126,7 +126,7 @@ function withName(template: string, name: string) {
   return template.replace('{name}', name)
 }
 
-function roleTagType(code: string) {
+function roleTagType(code: string): RoleGroupTagType {
   return roleTagTypeMapFromApi.value[code] || getRoleGroupTagType(code)
 }
 

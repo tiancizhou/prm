@@ -1,0 +1,17 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://${PRM_DB_HOST}:${PRM_DB_PORT:3306}/${PRM_DB_NAME:prm}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${PRM_DB_USER}
+    password: ${PRM_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${PRM_DB_MAX_POOL_SIZE:30}
+      minimum-idle: ${PRM_DB_MIN_IDLE:10}
+      connection-timeout: 30000
+
+logging:
+  level:
+    com.prm: INFO

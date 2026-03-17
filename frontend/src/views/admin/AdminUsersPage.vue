@@ -158,12 +158,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/api/http'
 import { adminDepartmentApi, type DepartmentTreeNode } from '@/api/adminDepartment'
 import { ADMIN_PEOPLE_I18N } from '@/constants/adminPeople'
-import { getRoleGroupTagType } from '@/constants/roleGroupCode'
+import { getRoleGroupTagType, type RoleGroupTagType } from '@/constants/roleGroupCode'
 import { resolveThemeLocale } from '@/constants/theme'
 import { useAuthStore } from '@/stores/auth'
 import { ACTION_PERMISSION_MAP } from '@/utils/permission'
 
-interface Role { id: number; name: string; code: string; tagType?: string }
+interface Role { id: number; name: string; code: string; tagType?: RoleGroupTagType }
 interface UserProjectScope {
   userId: number
   displayName: string
@@ -220,7 +220,7 @@ const form = reactive({
 
 const departmentOptions = computed(() => flattenNodes(departmentTree.value).filter((item) => item.nodeType === 'DEPARTMENT'))
 const roleNameMap = computed<Record<string, string>>(() => Object.fromEntries(allRoles.value.map((role) => [role.code, role.name])))
-const roleTagTypeMapFromApi = computed<Record<string, string>>(() =>
+const roleTagTypeMapFromApi = computed<Record<string, RoleGroupTagType>>(() =>
   Object.fromEntries(
     allRoles.value
       .filter((r) => r.tagType)
@@ -292,7 +292,7 @@ function statusTagType(status: string) {
   return status === 'ACTIVE' ? 'success' : 'info'
 }
 
-function roleTagType(roleCode: string): string {
+function roleTagType(roleCode: string): RoleGroupTagType {
   return roleTagTypeMapFromApi.value[roleCode] || getRoleGroupTagType(roleCode)
 }
 

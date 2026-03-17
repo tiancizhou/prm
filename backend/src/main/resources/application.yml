@@ -11,21 +11,12 @@ spring:
   application:
     name: prm-backend
   profiles:
-    active: dev
-  datasource:
-    url: jdbc:mysql://${PRM_DB_HOST:localhost}:${PRM_DB_PORT:3306}/${PRM_DB_NAME:prm}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${PRM_DB_USER:root}
-    password: ${PRM_DB_PASSWORD:123456}
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-    validate-on-migrate: false
+    validate-on-migrate: true
     out-of-order: false
   cache:
     type: caffeine
@@ -39,7 +30,6 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: deleted
@@ -64,10 +54,9 @@ springdoc:
 
 logging:
   level:
-    com.prm: DEBUG
+    com.prm: INFO
     org.springframework.web: INFO
 
 prm:
   upload:
-    # 建议使用绝对路径或 ${user.home}/prm-uploads，避免 Tomcat 工作目录下相对路径导致找不到路径
     path: ${PRM_UPLOAD_PATH:${user.home}/prm-uploads}
