@@ -51,16 +51,15 @@ npm run dev
 
 前端会把 `/api` 请求代理到 `http://localhost:8080`，无需跨域。修改 `frontend/vite.config.ts` 里的 `server.proxy` 可更换后端地址。
 
-### 前后端一体部署（生产）
+### 生产部署
 
-```bash
-cd frontend
-npm run build          # 构建产物自动输出到 backend/src/main/resources/static
-cd ../backend
-mvn package -DskipTests
-java -jar target/prm-backend-1.0.0-SNAPSHOT.jar
-# 访问 http://localhost:8080
-```
+**约定（当前环境）：**
+
+- 前端静态资源目录：**`/opt/prm/front`**
+- 后端 JAR 所在目录：**`/opt/prm`**
+- 更新后端后重启：**`pm2 restart 0`**（`0` 为 PM2 进程 id，以 `pm2 list` 为准）
+
+**完整步骤、Nginx 示例与验证方式见：[部署文档](docs/deployment.md)。**
 
 ## 默认账号
 
@@ -70,7 +69,8 @@ java -jar target/prm-backend-1.0.0-SNAPSHOT.jar
 
 ## API 文档
 
-启动后访问 [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- 本地直连后端：[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- 经 Nginx 部署：浏览器访问 `http(s)://<你的域名>/swagger-ui.html`（与上文 `location` 一致）
 
 ## 核心功能模块
 
@@ -107,5 +107,7 @@ prm/
 │       ├── stores/            # Pinia 状态管理
 │       ├── views/             # 页面组件
 │       └── layouts/           # 主布局
-└── docs/plans/                # 设计文档与实施计划
+├── docs/
+│   ├── deployment.md          # 生产部署（目录约定、PM2、Nginx）
+│   └── plans/                 # 设计文档与实施计划
 ```

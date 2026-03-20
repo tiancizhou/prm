@@ -34,7 +34,8 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: '../backend/src/main/resources/static',
+    // 前后端分离部署：产物留在 frontend，由静态站点或反向代理托管，不再写入后端 static
+    outDir: 'dist',
     emptyOutDir: true
   }
 })
