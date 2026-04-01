@@ -9,10 +9,27 @@
 | 后端 | Java 21, Spring Boot 3.3.x |
 | 认证 | Sa-Token（UUID Token + RBAC）|
 | ORM | MyBatis-Plus 3.5.9 |
-| 数据库 | SQLite（零运维，可平滑迁移至 MySQL）|
+| 数据库 | MySQL 8.0+ |
 | 迁移 | Flyway 10.x |
 | 前端 | Vue3 + Vite + Element Plus + Pinia |
 | 文档 | SpringDoc OpenAPI（Swagger UI）|
+
+## 数据库版本管理（Flyway）
+
+本项目使用 [Flyway](https://flywaydb.org/) 管理数据库结构变更，**无需手动执行任何 SQL**。
+
+**工作原理**：Flyway 在应用启动时自动扫描 `backend/src/main/resources/db/migration/` 目录下的 SQL 文件，按版本号顺序依次执行尚未执行过的脚本，并将执行记录保存在数据库的 `flyway_schema_history` 表中。已执行过的脚本不会重复执行。
+
+**迁移文件命名规则**：`V{版本号}__{描述}.sql`，例如 `V1__init_system.sql`、`V15__add_module.sql`。版本号必须递增，不可重复。
+
+**对开发者意味着什么**：
+- 首次启动或部署新版本时，Flyway 自动将数据库结构升级到最新状态
+- 多人协作时，拉取代码后直接启动即可，无需关心"我少跑了哪几个 SQL"
+- **不要修改已提交的历史迁移文件**，Flyway 会校验文件内容的 checksum，修改后启动会报错
+
+**常见问题**：如果启动时报 `Migration checksum mismatch`，说明某个历史 SQL 文件被修改过，用 `flyway repair` 命令修复（需安装 Flyway CLI 或通过 Maven 插件执行）。
+
+---
 
 ## 快速启动
 
@@ -21,6 +38,7 @@
 - Java 21+
 - Maven 3.9+
 - Node 18+
+- MySQL 8.0+
 
 ### 开发调试（推荐：前后端分开启动，便于调试）
 
@@ -82,13 +100,6 @@ npm run dev
 - **迭代管理**：Sprint 规划，关闭前自动检查严重 Bug
 - **版本发布（第一阶段）**：当前提供版本记录与发布标记，未启用完整发布项闭环
 - **看板统计**：项目/需求/任务/Bug 多维统计，每日自动聚合快照
-
-## 数据库迁移至 MySQL
-
-1. 导出 SQLite 数据
-2. 修改 `application.yml`：更换 datasource 为 MySQL 配置
-3. Flyway 会自动在 MySQL 上重新执行迁移脚本
-4. 所有 DDL 保持 SQLite/MySQL 双兼容风格
 
 ## 项目结构
 
